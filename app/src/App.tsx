@@ -4,6 +4,7 @@ import CellShowcase3D from '@/components/CellShowcase3D';
 import SimSection from '@/sections/SimSection';
 import ScienceSection from '@/sections/ScienceSection';
 import ClinicalSection from '@/sections/ClinicalSection';
+import DataSection from '@/sections/DataSection';
 import TechSection from '@/sections/TechSection';
 import TeamSection from '@/sections/TeamSection';
 import ReferencesSection from '@/sections/ReferencesSection';
@@ -26,6 +27,7 @@ function App() {
               <NavLink href="#simulation" label="Sim" />
               <NavLink href="#science" label="Science" />
               <NavLink href="#clinical" label="Clinical" />
+              <NavLink href="#data" label="Data" />
               <NavLink href="#technology" label="Tech" />
               <NavLink href="#team" label="Team" />
               <NavLink href="#references" label="Refs" />
@@ -40,6 +42,7 @@ function App() {
           <SimSection />
           <ScienceSection />
           <ClinicalSection />
+          <DataSection />
           <TechSection />
           <TeamSection />
           <ReferencesSection />
