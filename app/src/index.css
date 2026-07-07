@@ -1,0 +1,239 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 222 47% 5%;
+    --foreground: 210 40% 96%;
+    --card: 222 47% 7%;
+    --card-foreground: 210 40% 96%;
+    --popover: 222 47% 7%;
+    --popover-foreground: 210 40% 96%;
+    --primary: 187 100% 50%;
+    --primary-foreground: 222 47% 5%;
+    --secondary: 222 30% 12%;
+    --secondary-foreground: 210 40% 96%;
+    --muted: 222 30% 15%;
+    --muted-foreground: 215 20% 55%;
+    --accent: 187 100% 50%;
+    --accent-foreground: 222 47% 5%;
+    --destructive: 348 100% 60%;
+    --destructive-foreground: 210 40% 96%;
+    --border: 222 30% 18%;
+    --input: 222 30% 15%;
+    --ring: 187 100% 50%;
+    --radius: 0.625rem;
+
+    /* Custom cell colors */
+    --car-m-color: 150 100% 50%;
+    --m1-color: 348 100% 60%;
+    --m2-color: 187 100% 50%;
+    --tumor-color: 270 80% 65%;
+    --cd8-color: 45 100% 50%;
+    --wt-color: 210 20% 60%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-[#0a0f1a] text-foreground antialiased;
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+@layer components {
+  .glass-panel {
+    @apply bg-[rgba(15,23,42,0.85)] backdrop-blur-md border border-[rgba(0,204,255,0.15)] rounded-lg;
+  }
+  
+  .cell-glow-car {
+    filter: drop-shadow(0 0 6px rgba(0, 255, 136, 0.6));
+  }
+  .cell-glow-m1 {
+    filter: drop-shadow(0 0 6px rgba(255, 51, 102, 0.6));
+  }
+  .cell-glow-m2 {
+    filter: drop-shadow(0 0 6px rgba(0, 204, 255, 0.6));
+  }
+  .cell-glow-tumor {
+    filter: drop-shadow(0 0 6px rgba(204, 102, 255, 0.6));
+  }
+  .cell-glow-cd8 {
+    filter: drop-shadow(0 0 6px rgba(255, 204, 0, 0.6));
+  }
+  
+  .glow-border {
+    box-shadow: 0 0 20px rgba(0, 204, 255, 0.1), inset 0 0 20px rgba(0, 204, 255, 0.05);
+  }
+  
+  .scientific-gradient {
+    background: linear-gradient(135deg, rgba(0,204,255,0.1) 0%, rgba(0,255,136,0.05) 50%, rgba(204,102,255,0.1) 100%);
+  }
+}
+
+/* ── Particle float animation ───────────────────────────────────── */
+@keyframes float {
+  0%, 100% { transform: translate(0, 0) scale(1); opacity: 0.15; }
+  25% { transform: translate(20px, -30px) scale(1.2); opacity: 0.3; }
+  50% { transform: translate(-15px, 20px) scale(0.8); opacity: 0.2; }
+  75% { transform: translate(25px, 10px) scale(1.1); opacity: 0.25; }
+}
+.animate-float {
+  animation: float linear infinite;
+}
+
+/* ── Gradient mesh background (hero) ────────────────────────────── */
+@keyframes gradient-mesh {
+  0% {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 30%, rgba(0, 204, 255, 0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 70%, rgba(204, 102, 255, 0.3) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 50% 50%, rgba(0, 255, 136, 0.2) 0%, transparent 50%);
+  }
+  25% {
+    background:
+      radial-gradient(ellipse 70% 70% at 60% 20%, rgba(0, 204, 255, 0.3) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 60% at 30% 80%, rgba(204, 102, 255, 0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 70% 40%, rgba(0, 255, 136, 0.3) 0%, transparent 55%);
+  }
+  50% {
+    background:
+      radial-gradient(ellipse 60% 80% at 40% 60%, rgba(0, 204, 255, 0.25) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 70% at 70% 30%, rgba(204, 102, 255, 0.35) 0%, transparent 55%),
+      radial-gradient(ellipse 80% 60% at 20% 50%, rgba(0, 255, 136, 0.25) 0%, transparent 50%);
+  }
+  75% {
+    background:
+      radial-gradient(ellipse 80% 60% at 50% 80%, rgba(0, 204, 255, 0.3) 0%, transparent 55%),
+      radial-gradient(ellipse 60% 80% at 20% 40%, rgba(204, 102, 255, 0.2) 0%, transparent 60%),
+      radial-gradient(ellipse 70% 70% at 60% 20%, rgba(0, 255, 136, 0.35) 0%, transparent 55%);
+  }
+  100% {
+    background:
+      radial-gradient(ellipse 80% 60% at 20% 30%, rgba(0, 204, 255, 0.35) 0%, transparent 60%),
+      radial-gradient(ellipse 60% 80% at 80% 70%, rgba(204, 102, 255, 0.3) 0%, transparent 55%),
+      radial-gradient(ellipse 70% 50% at 50% 50%, rgba(0, 255, 136, 0.2) 0%, transparent 50%);
+  }
+}
+.animate-gradient-mesh {
+  animation: gradient-mesh 20s ease-in-out infinite;
+}
+
+/* ── Typewriter title animation ─────────────────────────────────── */
+@keyframes typewriter-carm {
+  0%   { width: 0; }
+  100% { width: 5.2ch; }  /* "CAR-M" = 5 chars + dash width */
+}
+
+@keyframes blink-caret {
+  0%, 100% { border-right-color: transparent; }
+  50%      { border-right-color: #00ccff; }
+}
+
+@keyframes fade-in-subtitle {
+  0%   { opacity: 0; transform: translateY(8px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.typewriter-carm {
+  display: inline-block;
+  overflow: hidden;
+  white-space: nowrap;
+  border-right: 3px solid #00ccff;
+  width: 0;
+  animation:
+    typewriter-carm 1.2s steps(5) 0.5s forwards,
+    blink-caret 0.75s step-end 0.5s 4;
+}
+
+.fade-in-subtitle {
+  opacity: 0;
+  animation: fade-in-subtitle 0.8s ease-out 2s forwards;
+}
+
+/* ── CTA pulsing glow ───────────────────────────────────────────── */
+@keyframes cta-glow {
+  0%, 100% {
+    box-shadow: 0 0 8px rgba(0, 204, 255, 0.15), 0 0 20px rgba(0, 204, 255, 0.08);
+  }
+  50% {
+    box-shadow: 0 0 16px rgba(0, 204, 255, 0.3), 0 0 40px rgba(0, 204, 255, 0.15);
+  }
+}
+.animate-cta-glow {
+  animation: cta-glow 2.5s ease-in-out infinite;
+}
+
+/* ── Scroll-reveal utility classes ──────────────────────────────── */
+.scroll-reveal {
+  opacity: 0;
+  transition: opacity 0.7s ease-out, transform 0.7s ease-out;
+}
+
+.scroll-reveal.fade-in-up {
+  transform: translateY(40px);
+}
+.scroll-reveal.fade-in-left {
+  transform: translateX(-40px);
+}
+.scroll-reveal.fade-in-right {
+  transform: translateX(40px);
+}
+
+/* When visible */
+.scroll-reveal.is-visible {
+  opacity: 1;
+  transform: translateY(0) translateX(0);
+}
+
+/* Stagger delays */
+.stagger-1 { transition-delay: 0.1s; }
+.stagger-2 { transition-delay: 0.2s; }
+.stagger-3 { transition-delay: 0.3s; }
+.stagger-4 { transition-delay: 0.4s; }
+.stagger-5 { transition-delay: 0.5s; }
+
+/* ── Reduced motion ─────────────────────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .typewriter-carm {
+    width: auto !important;
+    border-right: none;
+    animation: none !important;
+  }
+  .fade-in-subtitle {
+    opacity: 1 !important;
+    animation: none !important;
+    transform: none !important;
+  }
+  .scroll-reveal {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+}
+
+/* ── Text color utilities ───────────────────────────────────────── */
+.text-car { color: hsl(var(--car-m-color)); }
+.text-m1 { color: hsl(var(--m1-color)); }
+.text-m2 { color: hsl(var(--m2-color)); }
+.text-tumor { color: hsl(var(--tumor-color)); }
+.text-cd8 { color: hsl(var(--cd8-color)); }
+.bg-car { background-color: hsl(var(--car-m-color)); }
+.bg-m1 { background-color: hsl(var(--m1-color)); }
+.bg-m2 { background-color: hsl(var(--m2-color)); }
+.bg-tumor { background-color: hsl(var(--tumor-color)); }
+.bg-cd8 { background-color: hsl(var(--cd8-color)); }
