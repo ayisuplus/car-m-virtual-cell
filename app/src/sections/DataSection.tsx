@@ -169,17 +169,17 @@ export default function DataSection() {
           </p>
         </div>
 
-        {/* Two-column layout */}
+        {/* Two-column layout — enhanced */}
         <div className="grid md:grid-cols-2 gap-6 mb-8">
           {/* Cell Type Composition */}
-          <div className="glass-panel p-6 rounded-xl">
-            <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div className="glass-panel p-6 rounded-xl gradient-border hover-lift group">
+            <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-5 flex items-center gap-2">
               <Activity className="w-4 h-4" />
               Cell Type Composition
             </h3>
             <ResponsiveContainer width="100%" height={350}>
               <BarChart data={CELL_TYPES} margin={{ top: 5, right: 10, left: 0, bottom: 60 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" strokeOpacity={0.5} />
                 <XAxis
                   dataKey="name"
                   tick={{ fill: '#94a3b8', fontSize: 11 }}
@@ -194,19 +194,19 @@ export default function DataSection() {
                   axisLine={{ stroke: '#334155' }}
                   tickLine={{ stroke: '#334155' }}
                 />
-                <Tooltip content={<CellTypeTooltip />} cursor={{ fill: '#1e293b' }} />
+                <Tooltip content={<CellTypeTooltip />} cursor={{ fill: 'rgba(30, 41, 59, 0.5)' }} />
                 <Legend
-                  wrapperStyle={{ fontSize: 12, color: '#94a3b8' }}
+                  wrapperStyle={{ fontSize: 12, color: '#94a3b8', paddingTop: '10px' }}
                 />
-                <Bar dataKey="COMB7" name="COMB7 (CAR-M)" fill={PURPLE} radius={[3, 3, 0, 0]} />
-                <Bar dataKey="UTD" name="UTD (Control)" fill={CYAN} radius={[3, 3, 0, 0]} />
+                <Bar dataKey="COMB7" name="COMB7 (CAR-M)" fill={PURPLE} radius={[4, 4, 0, 0]} />
+                <Bar dataKey="UTD" name="UTD (Control)" fill={CYAN} radius={[4, 4, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
           </div>
 
           {/* Top DE Genes */}
-          <div className="glass-panel p-6 rounded-xl">
-            <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+          <div className="glass-panel p-6 rounded-xl gradient-border hover-lift group">
+            <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-5 flex items-center gap-2">
               <TrendingUp className="w-4 h-4" />
               Top Differentially Expressed Genes
             </h3>
@@ -216,7 +216,7 @@ export default function DataSection() {
                 layout="vertical"
                 margin={{ top: 5, right: 20, left: 10, bottom: 5 }}
               >
-                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" horizontal={false} />
+                <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" strokeOpacity={0.5} horizontal={false} />
                 <XAxis
                   type="number"
                   tick={{ fill: '#94a3b8', fontSize: 11 }}
@@ -233,10 +233,16 @@ export default function DataSection() {
                   width={90}
                 />
                 <Tooltip
-                  contentStyle={{ backgroundColor: '#0f172a', border: '1px solid #334155', borderRadius: '8px', fontSize: 12 }}
-                  cursor={{ fill: '#1e293b' }}
+                  contentStyle={{ 
+                    backgroundColor: 'rgba(15, 23, 42, 0.95)', 
+                    border: '1px solid rgba(100, 116, 139, 0.3)', 
+                    borderRadius: '12px', 
+                    fontSize: 12,
+                    backdropFilter: 'blur(10px)'
+                  }}
+                  cursor={{ fill: 'rgba(30, 41, 59, 0.5)' }}
                 />
-                <Bar dataKey="log2fc" name="log₂FC" radius={[0, 3, 3, 0]}>
+                <Bar dataKey="log2fc" name="log₂FC" radius={[0, 4, 4, 0]}>
                   {TOP_DE_GENES.map((entry) => (
                     <Cell
                       key={entry.gene}
@@ -250,15 +256,15 @@ export default function DataSection() {
           </div>
         </div>
 
-        {/* Volcano Plot — full width */}
-        <div className="glass-panel p-6 rounded-xl mb-8">
-          <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-4 flex items-center gap-2">
+        {/* Volcano Plot — full width, enhanced */}
+        <div className="glass-panel p-6 rounded-xl mb-8 gradient-border hover-lift">
+          <h3 className="text-sm font-semibold text-purple-400 uppercase tracking-wider mb-5 flex items-center gap-2">
             <TrendingUp className="w-4 h-4" />
             Differential Expression Volcano Plot
           </h3>
           <ResponsiveContainer width="100%" height={420}>
             <ScatterChart margin={{ top: 10, right: 20, left: 10, bottom: 10 }}>
-              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" />
+              <CartesianGrid strokeDasharray="3 3" stroke="#1e293b" strokeOpacity={0.5} />
               <XAxis
                 type="number"
                 dataKey="log2fc"
@@ -277,19 +283,22 @@ export default function DataSection() {
                 tickLine={{ stroke: '#334155' }}
                 label={{ value: '-log₁₀(p-value)', angle: -90, position: 'insideLeft', fill: '#94a3b8', fontSize: 12, dx: 10 }}
               />
-              <Tooltip content={<VolcanoTooltip />} cursor={{ stroke: '#334155', strokeDasharray: '3 3' }} />
-              <Legend
-                wrapperStyle={{ fontSize: 12, color: '#94a3b8' }}
+              <Tooltip 
+                content={<VolcanoTooltip />} 
+                cursor={{ stroke: 'rgba(100, 116, 139, 0.3)', strokeDasharray: '3 3' }} 
               />
-              <Scatter name="Upregulated" data={upGenes} fill={ROSE} fillOpacity={0.7} shape="circle" />
-              <Scatter name="Not significant" data={nsGenes} fill={SLATE} fillOpacity={0.4} shape="circle" />
+              <Legend
+                wrapperStyle={{ fontSize: 12, color: '#94a3b8', paddingTop: '10px' }}
+              />
+              <Scatter name="Upregulated" data={upGenes} fill={ROSE} fillOpacity={0.8} shape="circle" />
+              <Scatter name="Not significant" data={nsGenes} fill={SLATE} fillOpacity={0.5} shape="circle" />
             </ScatterChart>
           </ResponsiveContainer>
-          <div className="flex items-center justify-between mt-4">
-            <p className="text-[10px] text-slate-500">
+          <div className="flex items-center justify-between mt-5 pt-4 border-t border-slate-800/50">
+            <p className="text-[11px] text-slate-500">
               Genes with p-value near zero shown at -log₁₀(p) = 300 (capped). All displayed genes have adjusted p &lt; 0.001.
             </p>
-            <span className="text-[10px] text-slate-500 font-mono">
+            <span className="text-[11px] text-slate-500 font-mono px-3 py-1 rounded-full bg-slate-800/50">
               n = {VOLCANO_DATA.length} genes
             </span>
           </div>

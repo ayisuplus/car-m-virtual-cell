@@ -20,11 +20,25 @@ const CELL_MODELS: CellModel[] = [
     color: '#00ff88',
   },
   {
+    name: 'macrophage-enhanced',
+    path: '/models/macrophage-enhanced.glb',
+    label: 'Enhanced Macrophage',
+    description: 'High-quality macrophage with bioluminescent glow and detailed surface receptors.',
+    color: '#00ff88',
+  },
+  {
     name: 'tumor',
     path: '/models/tumor-cell.glb',
     label: 'Tumor Cell',
     description: 'Malignant cell expressing HER2 surface markers, target of CAR-M therapy.',
     color: '#cc66ff',
+  },
+  {
+    name: 'dna-helix',
+    path: '/models/dna-helix.glb',
+    label: 'DNA Double Helix',
+    description: 'The double helix structure of DNA, the molecular basis of genetic information.',
+    color: '#00ccff',
   },
 ];
 

@@ -76,14 +76,14 @@ export default function ClinicalSection() {
           </p>
         </div>
 
-        {/* Key stats */}
-        <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-12">
+        {/* Key stats — enhanced */}
+        <div ref={statsRef} className="grid grid-cols-2 md:grid-cols-4 gap-5 mb-12">
           {CT0508_DATA.map((item) => (
             <div
               key={item.metric}
-              className="glass-panel p-5 rounded-xl text-center hover:border-emerald-400/30 transition-all duration-300"
+              className="glass-panel p-5 rounded-xl text-center gradient-border hover-lift group"
             >
-              <div className="flex justify-center mb-3 text-emerald-400">{item.icon}</div>
+              <div className="flex justify-center mb-3 text-emerald-400 group-hover:scale-110 transition-transform duration-500">{item.icon}</div>
               <CountUpStat config={item} isVisible={isVisible} />
               <div className="text-sm font-medium text-slate-300 mb-1">{item.metric}</div>
               <div className="text-[11px] text-slate-500">{item.desc}</div>

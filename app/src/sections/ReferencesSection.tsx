@@ -67,23 +67,23 @@ export default function ReferencesSection() {
           </h2>
         </div>
 
-        {/* References card */}
-        <div className="glass-panel p-6 md:p-8 rounded-xl border-purple-400/20">
+        {/* References card — enhanced */}
+        <div className="glass-panel p-6 md:p-8 rounded-xl gradient-border">
           <ol className="space-y-6">
             {REFERENCES.map((ref, index) => (
-              <li key={index} className="flex gap-4">
-                <span className="flex-shrink-0 w-7 h-7 rounded-full bg-purple-400/10 border border-purple-400/20 flex items-center justify-center text-xs font-mono text-purple-400">
+              <li key={index} className="flex gap-4 group">
+                <span className="flex-shrink-0 w-8 h-8 rounded-lg bg-purple-400/10 border border-purple-400/20 flex items-center justify-center text-xs font-mono text-purple-400 group-hover:bg-purple-400/20 group-hover:border-purple-400/40 transition-all duration-300">
                   {index + 1}
                 </span>
                 <div className="flex-1 min-w-0">
-                  <p className="text-sm text-white leading-relaxed">
-                    {ref.authors} {ref.title}
+                  <p className="text-sm text-white leading-relaxed group-hover:text-purple-100 transition-colors duration-300">
+                    <span className="font-medium">{ref.authors}</span> {ref.title}
                   </p>
-                  <p className="text-sm mt-1">
-                    <span className="text-cyan-400">{ref.journal}</span>
+                  <p className="text-sm mt-1.5">
+                    <span className="text-cyan-400 font-medium">{ref.journal}</span>
                     <span className="text-slate-500">, {ref.year}.</span>
                   </p>
-                  <p className="text-xs text-slate-400 mt-1">{ref.desc}</p>
+                  <p className="text-xs text-slate-400 mt-1.5 leading-relaxed">{ref.desc}</p>
                 </div>
               </li>
             ))}

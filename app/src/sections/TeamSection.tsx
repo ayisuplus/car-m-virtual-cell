@@ -66,34 +66,50 @@ export default function TeamSection() {
           </p>
         </div>
 
-        {/* Cards grid */}
+        {/* Cards grid — enhanced */}
         <div className="grid md:grid-cols-2 gap-6">
           {CARDS.map((card) => (
             <div
               key={card.title}
-              className="glass-panel p-6 rounded-xl hover:border-opacity-50 transition-all duration-300"
-              style={{ borderColor: `${card.color}20` }}
+              className="glass-panel p-6 rounded-xl gradient-border hover-lift group relative overflow-hidden"
+              style={{ borderColor: `${card.color}15` }}
             >
-              <div className="flex items-center gap-3 mb-4">
+              {/* Background accent */}
+              <div className="absolute top-0 right-0 w-40 h-40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity duration-700"
+                style={{ 
+                  background: `radial-gradient(circle, ${card.color}10 0%, transparent 70%)`,
+                  transform: 'translate(30%, -30%)'
+                }} 
+              />
+              
+              <div className="flex items-center gap-3 mb-5 relative z-10">
                 <div
-                  className="w-9 h-9 rounded-lg flex items-center justify-center"
-                  style={{ backgroundColor: `${card.color}15`, color: card.color }}
+                  className="w-10 h-10 rounded-xl flex items-center justify-center group-hover:scale-110 transition-transform duration-500"
+                  style={{ 
+                    backgroundColor: `${card.color}12`,
+                    color: card.color,
+                    boxShadow: `0 0 20px ${card.color}10`
+                  }}
                 >
                   {card.icon}
                 </div>
-                <h3 className="text-lg font-semibold text-white">{card.title}</h3>
+                <h3 className="text-lg font-semibold text-white group-hover:text-white transition-colors duration-300">{card.title}</h3>
               </div>
-              <ul className="space-y-2.5">
+              <ul className="space-y-3 relative z-10">
                 {card.items.map((item) => (
-                  <li key={item} className="flex items-start gap-2.5 text-sm text-slate-300">
+                  <li key={item} className="flex items-start gap-3 text-sm text-slate-300 group-hover:text-slate-200 transition-colors duration-300">
                     <span
-                      className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-1.5"
+                      className="w-1.5 h-1.5 rounded-full flex-shrink-0 mt-2 group-hover:scale-150 transition-transform duration-300"
                       style={{ backgroundColor: card.color }}
                     />
-                    {item}
+                    <span className="leading-relaxed">{item}</span>
                   </li>
                 ))}
               </ul>
+              
+              {/* Bottom accent */}
+              <div className="absolute bottom-0 left-0 right-0 h-0.5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"
+                style={{ background: `linear-gradient(90deg, transparent, ${card.color}, transparent)` }} />
             </div>
           ))}
         </div>
