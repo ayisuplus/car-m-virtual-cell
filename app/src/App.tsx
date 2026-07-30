@@ -1,15 +1,18 @@
+import { lazy, Suspense } from 'react';
 import { SimProvider } from '@/context/SimContext';
 import HeroSection from '@/sections/HeroSection';
 import CellShowcase3D from '@/components/CellShowcase3D';
 import SimSection from '@/sections/SimSection';
-import ScienceSection from '@/sections/ScienceSection';
-import ClinicalSection from '@/sections/ClinicalSection';
-import DataSection from '@/sections/DataSection';
-import TechSection from '@/sections/TechSection';
-import TeamSection from '@/sections/TeamSection';
-import ReferencesSection from '@/sections/ReferencesSection';
-import AssetSection from '@/sections/AssetSection';
-import Footer from '@/sections/Footer';
+
+// Lazy-loaded non-critical sections (loaded on scroll / interaction)
+const ScienceSection = lazy(() => import('@/sections/ScienceSection'));
+const ClinicalSection = lazy(() => import('@/sections/ClinicalSection'));
+const DataSection = lazy(() => import('@/sections/DataSection'));
+const TechSection = lazy(() => import('@/sections/TechSection'));
+const TeamSection = lazy(() => import('@/sections/TeamSection'));
+const ReferencesSection = lazy(() => import('@/sections/ReferencesSection'));
+const AssetSection = lazy(() => import('@/sections/AssetSection'));
+const Footer = lazy(() => import('@/sections/Footer'));
 
 /* ── Section Divider Component ──────────────────────────────────── */
 function SectionDivider() {
@@ -18,6 +21,22 @@ function SectionDivider() {
       <div className="section-divider max-w-4xl mx-auto" />
       {/* Center dot */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400/30" />
+    </div>
+  );
+}
+
+/* ── Loading skeleton for lazy sections ──────────────────────────── */
+function SectionSkeleton() {
+  return (
+    <div className="py-20 px-4 md:px-8">
+      <div className="max-w-6xl mx-auto animate-pulse">
+        <div className="h-8 w-48 bg-slate-800/50 rounded-lg mb-4 mx-auto" />
+        <div className="h-4 w-96 bg-slate-800/30 rounded-lg mb-12 mx-auto" />
+        <div className="grid md:grid-cols-2 gap-6">
+          <div className="h-64 bg-slate-800/20 rounded-xl" />
+          <div className="h-64 bg-slate-800/20 rounded-xl" />
+        </div>
+      </div>
     </div>
   );
 }
@@ -53,28 +72,32 @@ function App() {
 
         {/* Main content */}
         <main className="pt-14">
+          {/* Critical path — loaded synchronously */}
           <HeroSection />
           <SectionDivider />
           <CellShowcase3D />
           <SectionDivider />
           <SimSection />
           <SectionDivider />
-          <ScienceSection />
-          <SectionDivider />
-          <ClinicalSection />
-          <SectionDivider />
-          <DataSection />
-          <SectionDivider />
-          <TechSection />
-          <SectionDivider />
-          <TeamSection />
-          <SectionDivider />
-          <ReferencesSection />
-          <SectionDivider />
-          <AssetSection />
-        </main>
 
-        <Footer />
+          {/* Non-critical — lazy loaded on scroll */}
+          <Suspense fallback={<SectionSkeleton />}>
+            <ScienceSection />
+            <SectionDivider />
+            <ClinicalSection />
+            <SectionDivider />
+            <DataSection />
+            <SectionDivider />
+            <TechSection />
+            <SectionDivider />
+            <TeamSection />
+            <SectionDivider />
+            <ReferencesSection />
+            <SectionDivider />
+            <AssetSection />
+            <Footer />
+          </Suspense>
+        </main>
       </div>
     </SimProvider>
   );

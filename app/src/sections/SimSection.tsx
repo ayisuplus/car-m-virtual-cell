@@ -12,10 +12,12 @@ import NeuralSurrogateDemo from '@/components/NeuralSurrogateDemo';
 import { Sliders, Dna, BarChart3, FlaskConical, GitCompare, Brain } from 'lucide-react';
 import { useSim } from '@/context/SimContext';
 import type { SimParams, CarDesign } from '@/types/simulation';
+import type { ABMEngine } from '@/lib/simulation/engine';
 
 export default function SimSection() {
   const [activeTab, setActiveTab] = useState('control');
   const [viewMode, setViewMode] = useState<'2d' | '3d'>('2d');
+  const [engine, setEngine] = useState<ABMEngine | null>(null);
   const { updateSimParams, updateCarDesign } = useSim();
 
   const handlePresetSelect = (simParams: SimParams, carDesign: CarDesign) => {
@@ -70,11 +72,11 @@ export default function SimSection() {
           {/* Canvas area — enhanced */}
           <div className="flex-1 min-h-[500px] lg:min-h-[650px] rounded-xl overflow-hidden border border-slate-700/40 bg-[#080c14] relative gradient-border">
             <div className={viewMode === '2d' ? 'relative w-full h-full' : 'absolute inset-0 opacity-0 pointer-events-none -z-10'}>
-              <SimulationCanvas />
+              <SimulationCanvas onEngineReady={setEngine} />
             </div>
             {viewMode === '3d' && (
               <div className="absolute inset-0 z-10">
-                <Simulation3D />
+                <Simulation3D engine={engine} />
               </div>
             )}
             {/* Corner accent */}

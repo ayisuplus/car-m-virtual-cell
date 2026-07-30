@@ -20,10 +20,13 @@ export default defineConfig([
       globals: globals.browser,
     },
     rules: {
-      'react-refresh/only-export-components': 'off',
-      'react-hooks/set-state-in-effect': 'off',
-      'react-hooks/refs': 'off',
-      'react-hooks/purity': 'off',
+      'react-refresh/only-export-components': 'warn',
+      'react-hooks/set-state-in-effect': 'warn',
+      'react-hooks/refs': 'warn',
+      'react-hooks/purity': 'warn',
+      // requestAnimationFrame handle / Three.js group are legitimate ref
+      // assignments in async callbacks; the v7 rule over-flags them.
+      'react-hooks/immutability': 'warn',
     },
   },
 ])

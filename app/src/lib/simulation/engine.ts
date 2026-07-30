@@ -501,14 +501,3 @@ export class ABMEngine {
     clearKillEvents();
   }
 }
-
-// ── Engine registry (replaces window.__carmEngine) ──
-let _engine: ABMEngine | null = null;
-
-export function setEngine(engine: ABMEngine | null): void {
-  _engine = engine;
-}
-
-export function getEngine(): ABMEngine | null {
-  return _engine;
-}

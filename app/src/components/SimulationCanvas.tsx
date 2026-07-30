@@ -1,8 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
-import { ABMEngine, setEngine } from '@/lib/simulation/engine';
+import { ABMEngine } from '@/lib/simulation/engine';
 import { useSim } from '@/context/SimContext';
+import { STORAGE_KEYS, getStorageFlag, setStorageFlag } from '@/lib/storage';
 
-export default function SimulationCanvas() {
+interface SimulationCanvasProps {
+  onEngineReady: (engine: ABMEngine | null) => void;
+}
+
+export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const engineRef = useRef<ABMEngine | null>(null);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -10,15 +15,21 @@ export default function SimulationCanvas() {
   const animationFrameRef = useRef<number | null>(null);
   // Stable callback ref — captures latest onStatsUpdate without retriggering effects
   const onStatsUpdateRef = useRef(onStatsUpdate);
+  // Stable callback ref for engine registration (replaces module-level singleton)
+  const onEngineReadyRef = useRef(onEngineReady);
 
   const [showField, setShowField] = useState(true);
-  const [showECM, setShowECM] = useState(() => localStorage.getItem('car-m-show-ecm') === 'true');
+  const [showECM, setShowECM] = useState(() => getStorageFlag(STORAGE_KEYS.SHOW_ECM));
   const [cellCount, setCellCount] = useState(0);
   const [simTime, setSimTime] = useState(0);
 
   useEffect(() => {
     onStatsUpdateRef.current = onStatsUpdate;
   }, [onStatsUpdate]);
+
+  useEffect(() => {
+    onEngineReadyRef.current = onEngineReady;
+  }, [onEngineReady]);
 
   // Initialize engine (one-shot; uses ref for stable callback so deps are correct)
   useEffect(() => {
@@ -43,7 +54,7 @@ export default function SimulationCanvas() {
     );
 
     engineRef.current = engine;
-    setEngine(engine);
+    onEngineReadyRef.current(engine);
 
     // Initial render
     const ctx = canvas.getContext('2d');
@@ -55,7 +66,7 @@ export default function SimulationCanvas() {
     setSimTime(engine.simTime);
 
     return () => {
-      setEngine(null);
+      onEngineReadyRef.current(null);
       engine.destroy();
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
@@ -161,7 +172,7 @@ export default function SimulationCanvas() {
 
   const toggleECM = () => {
     const next = !showECM;
-    localStorage.setItem('car-m-show-ecm', String(next));
+    setStorageFlag(STORAGE_KEYS.SHOW_ECM, next);
     setShowECM(next);
   };
 

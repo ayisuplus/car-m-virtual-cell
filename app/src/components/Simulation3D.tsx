@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
-import { getEngine } from '@/lib/simulation/engine';
+import type { ABMEngine } from '@/lib/simulation/engine';
 import type { Cell } from '@/lib/simulation/cell';
 import type { PolarizationState } from '@/types/simulation';
 
@@ -41,7 +41,11 @@ function lcg(seed: number): () => number {
   };
 }
 
-export default function Simulation3D() {
+interface Simulation3DProps {
+  engine: ABMEngine | null;
+}
+
+export default function Simulation3D({ engine }: Simulation3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -50,6 +54,12 @@ export default function Simulation3D() {
   const cellMeshesRef = useRef<Map<string, THREE.Mesh>>(new Map());
   const frameIdRef = useRef<number>(0);
   const [isReady, setIsReady] = useState(false);
+  // Mirror engine prop into a ref so the animate closure always reads the latest
+  // instance without retriggering the [isReady] effect.
+  const engineRef = useRef(engine);
+  useEffect(() => {
+    engineRef.current = engine;
+  }, [engine]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -173,7 +183,7 @@ export default function Simulation3D() {
     const animate = () => {
       frameIdRef.current = requestAnimationFrame(animate);
 
-      const engine = getEngine();
+      const engine = engineRef.current;
       if (!engine) return;
 
       const cells = engine.cells;

@@ -13,7 +13,7 @@ export interface AssetConfig {
   path: string;
   fallbackPath?: string;
   description?: string;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 // Asset registry
