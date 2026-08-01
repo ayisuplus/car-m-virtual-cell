@@ -1,0 +1,160 @@
+<?xml version="1.0" encoding="utf-8" standalone="no"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN"
+  "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<svg xmlns:xlink="http://www.w3.org/1999/xlink" width="255.2pt" height="219.2pt" viewBox="0 0 255.2 219.2" xmlns="http://www.w3.org/2000/svg" version="1.1">
+ <metadata>
+  <rdf:RDF xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:cc="http://creativecommons.org/ns#" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
+   <cc:Work>
+    <dc:type rdf:resource="http://purl.org/dc/dcmitype/StillImage"/>
+    <dc:date>2026-08-02T00:01:06.870943</dc:date>
+    <dc:format>image/svg+xml</dc:format>
+    <dc:creator>
+     <cc:Agent>
+      <dc:title>Matplotlib v3.11.1, https://matplotlib.org/</dc:title>
+     </cc:Agent>
+    </dc:creator>
+   </cc:Work>
+  </rdf:RDF>
+ </metadata>
+ <defs>
+  <style type="text/css">*{stroke-linejoin: round; stroke-linecap: butt}</style>
+ </defs>
+ <g id="figure_1">
+  <g id="patch_1">
+   <path d="M 0 219.2 
+L 255.2 219.2 
+L 255.2 -0 
+L 0 -0 
+z
+" style="fill: #ffffff"/>
+  </g>
+  <g id="axes_1">
+   <g id="patch_2">
+    <path d="M 25.26 58.8096 
+L 229.94 58.8096 
+Q 232.8296 58.8096 232.8296 56.352 
+L 232.8296 19.488 
+Q 232.8296 17.0304 229.94 17.0304 
+L 25.26 17.0304 
+Q 22.3704 17.0304 22.3704 19.488 
+L 22.3704 56.352 
+Q 22.3704 58.8096 25.26 58.8096 
+z
+" clip-path="url(#pbb075d2078)" style="fill: #0f4d92; opacity: 0.12; stroke: #0f4d92; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_3">
+    <path d="M 25.26 105.9136 
+L 229.94 105.9136 
+Q 232.8296 105.9136 232.8296 103.456 
+L 232.8296 66.592 
+Q 232.8296 64.1344 229.94 64.1344 
+L 25.26 64.1344 
+Q 22.3704 64.1344 22.3704 66.592 
+L 22.3704 103.456 
+Q 22.3704 105.9136 25.26 105.9136 
+z
+" clip-path="url(#pbb075d2078)" style="fill: #42949e; opacity: 0.12; stroke: #42949e; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_4">
+    <path d="M 25.26 153.0176 
+L 229.94 153.0176 
+Q 232.8296 153.0176 232.8296 150.56 
+L 232.8296 113.696 
+Q 232.8296 111.2384 229.94 111.2384 
+L 25.26 111.2384 
+Q 22.3704 111.2384 22.3704 113.696 
+L 22.3704 150.56 
+Q 22.3704 153.0176 25.26 153.0176 
+z
+" clip-path="url(#pbb075d2078)" style="fill: #9a4d8e; opacity: 0.12; stroke: #9a4d8e; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="patch_5">
+    <path d="M 25.26 200.1216 
+L 229.94 200.1216 
+Q 232.8296 200.1216 232.8296 197.664 
+L 232.8296 160.8 
+Q 232.8296 158.3424 229.94 158.3424 
+L 25.26 158.3424 
+Q 22.3704 158.3424 22.3704 160.8 
+L 22.3704 197.664 
+Q 22.3704 200.1216 25.26 200.1216 
+z
+" clip-path="url(#pbb075d2078)" style="fill: #8bcf8b; opacity: 0.12; stroke: #8bcf8b; stroke-width: 1.2; stroke-linejoin: miter"/>
+   </g>
+   <g id="text_1">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #0f4d92" x="31.28" y="29.704191" transform="rotate(-0 31.28 29.704191)">Application Layer</text>
+   </g>
+   <g id="text_2">
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 45.025085)">React + Three.js + Chart.js</text>
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 51.478831)">~14K LOC TypeScript, client-side SPA</text>
+   </g>
+   <g id="text_3">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #42949e" x="31.28" y="76.808191" transform="rotate(-0 31.28 76.808191)">Simulation Layer</text>
+   </g>
+   <g id="text_4">
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 85.677059)">Spatial ABM (4 cell types)</text>
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 92.674359)">10-factor reaction-diffusion field</text>
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 98.581112)">Checkpoint-aware phagocytosis</text>
+   </g>
+   <g id="text_5">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #9a4d8e" x="31.28" y="123.912191" transform="rotate(-0 31.28 123.912191)">AI Layer</text>
+   </g>
+   <g id="text_6">
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 132.781059)">Neural surrogate MLP (6-32-32-3)</text>
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 139.265312)">Polarization map: context -&gt; M1/M2</text>
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 145.686831)">~9x speedup vs ODE (RK4)</text>
+   </g>
+   <g id="text_7">
+    <text style="font-weight: 700; font-size: 7px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; text-anchor: start; fill: #8bcf8b" x="31.28" y="171.016191" transform="rotate(-0 31.28 171.016191)">Data Layer</text>
+   </g>
+   <g id="text_8">
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 186.369312)">scRNA-seq / TAM atlas / literature priors</text>
+    <text style="font-size: 5.5px; font-family: 'Arial', 'Helvetica', 'DejaVu Sans', sans-serif; fill: #4d4d4d" transform="translate(31.28 192.821338)">Calibratable parameters, deterministic seed</text>
+   </g>
+   <g id="patch_6">
+    <path d="M 127.6 63.286973 
+Q 127.6 61.473245 127.6 59.659518 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 129 60.486973 
+L 127.6 63.286973 
+L 126.2 60.486973 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 126.2 62.459518 
+L 127.6 59.659518 
+L 129 62.459518 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_7">
+    <path d="M 127.6 110.390973 
+Q 127.6 108.577245 127.6 106.763518 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 129 107.590973 
+L 127.6 110.390973 
+L 126.2 107.590973 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 126.2 109.563518 
+L 127.6 106.763518 
+L 129 109.563518 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+   <g id="patch_8">
+    <path d="M 127.6 157.494973 
+Q 127.6 155.681245 127.6 153.867518 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 129 154.694973 
+L 127.6 157.494973 
+L 126.2 154.694973 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+    <path d="M 126.2 156.667518 
+L 127.6 153.867518 
+L 129 156.667518 
+" style="fill: none; stroke: #767676; stroke-width: 0.8; stroke-linecap: round"/>
+   </g>
+  </g>
+ </g>
+ <defs>
+  <clipPath id="pbb075d2078">
+   <rect x="7.2" y="7.2" width="240.8" height="204.8"/>
+  </clipPath>
+ </defs>
+</svg>

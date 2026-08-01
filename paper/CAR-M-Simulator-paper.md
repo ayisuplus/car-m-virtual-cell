@@ -64,6 +64,10 @@ CAR-M Simulator is organized as four conceptual layers (Figure 1).
 
 The implementation is ~14,000 lines of TypeScript across ~93 files, built with Vite. The entire simulation runs on the client; there is no backend inference service.
 
+![Figure 1. System architecture of CAR-M Simulator.](figures/figure1_architecture.png)
+
+**Figure 1 | System architecture of CAR-M Simulator.** The platform is organized as four conceptual layers connected by bidirectional data flow. The data layer encodes biological priors (cytokine roles, polarization drivers, checkpoint biology) drawn from the literature and single-cell/TAM atlases as calibratable structure. The AI layer provides a neural surrogate (a 6→32→32→3 multilayer perceptron) that maps local cytokine and metabolic context to macrophage polarization state, replacing per-cell ODE integration (Section 4.4). The simulation layer couples a spatial agent-based model of four cell types with a ten-factor reaction–diffusion field and a checkpoint-aware phagocytosis module (Sections 4.1–4.3). The application layer is a client-side React + Three.js + Chart.js single-page application (~14,000 lines of TypeScript) with no backend dependency. Vector source (SVG/PDF) ships with the repository.
+
 ---
 
 ## 4. Methods
@@ -149,6 +153,10 @@ We benchmarked the exact production inference path against an equivalent RK4 ODE
 
 Two honest caveats. First, our RK4 baseline relaxes to a quasi-steady state over 200 integration steps; a stiffer or higher-accuracy solver, or a larger cell population, would widen the gap substantially, whereas a coarser ODE would narrow it. The speedup is therefore a property of the solver configuration, not a universal constant. Second, earlier internal presentation material quoted an "847 ms vs. 0.3 ms" figure; that number is **not** reproducible from the source and we do not use it. The measured ~8× is the claim we stand behind. The practical takeaway is unchanged: with the surrogate, polarization consumes well under 1 ms per frame even at scene scale, leaving ample budget for rendering and interaction and keeping the workbench fluid.
 
+![Figure 2. Polarization surrogate performance.](figures/figure2_performance.png)
+
+**Figure 2 | Polarization surrogate performance.** **a**, Per-call latency of the neural surrogate versus an equivalent RK4 ODE polarization solver over the same six-dimensional input space, showing an ~8× speedup (1.5 µs versus 12 µs per cell-decision). **b**, Per-frame polarization cost as a function of the number of living agents *N*; the dashed line marks the 16.7 ms budget for 60 fps and the dotted line marks the typical scene size (*N* = 55), at which the surrogate consumes 0.08 ms per frame against 0.66 ms for the ODE. Values are single-machine deterministic micro-benchmark means over 200,000 evaluations per method after JIT warm-up (the reproducible script ships with the code); error bars are omitted because each bar is a timing mean rather than a biological replicate, and absolute latencies vary by hardware. Source data are provided as a Source Data file.
+
 ### 5.2 Qualitative mechanistic behavior
 
 Under a fixed seed, the platform produces reproducible, mechanistically plausible trajectories that respond in the expected *direction* to design and context changes. Representative observations from scripted scenarios include:
@@ -157,11 +165,19 @@ Under a fixed seed, the platform produces reproducible, mechanistically plausibl
 
 - **Signaling-domain choice changes the mechanism, not just the rate.** Switching to CD147 shifts the CAR-M from direct killing to ECM degradation: tumor counts fall more slowly, but ECM density drops and downstream motility improves — a qualitatively different route to the same goal.
 
-- **TME context modulates outcome.** Raising TGF-β or lowering antigen density (a HER2-low scenario) flattens the tumor-clearance and CD8-activation curves, reproducing the intuition that an immunosuppressive or antigen-poor context blunts efficacy.
+- **TME and antigen context shift the active readouts within their mechanism-imposed envelope.** Lowering antigen affinity (HER2-low) visibly weakens cumulative phagocytosis relative to baseline (Fig. 3b, lowest curve), because the recognition threshold in the phagocytosis module is harder to reach; raising TGF-β has a more modest effect on these already-engaged readouts at this parameterization, and the CD8⁺-activation readout stays near its low baseline across scenarios (summarized in Fig. 3d). The observation is deliberately directional and bounded: context changes the *active* outputs the field currently moves, while readouts whose discrete gate is not crossed remain flat — which is itself the mechanism-inspired behaviour we expect (Section 1.3), not a calibrated dose–response.
 
-- **Adaptive coupling emerges.** M1-skewed CAR-M raise local IFN-γ and CXCL9, which recruit and sustain CD8⁺ T-cells; heavy TGF-β/IL-10 loads instead accumulate CD8 exhaustion. This macrophage→T-cell coupling is emergent from the field, not hard-coded.
+- **Adaptive coupling is wired but not yet activated at this parameterization.** The reaction–diffusion field connects macrophage polarization to adaptive immunity — M1-skewed macrophages secrete IFN-γ and CXCL9 that can recruit and sustain CD8⁺ T-cells, while heavy TGF-β/IL-10 loads drive CD8 exhaustion — and this macrophage→T-cell coupling is emergent from the field rather than hard-coded. Under the default, deliberately immunosuppressive seed, however, the discrete M1 classification and the CD8⁺-activation readout stay near baseline (Fig. 3d); we therefore treat this coupling as a *designed mechanistic capacity* whose directional signature would sharpen under stronger pro-inflammatory drive or after data-driven calibration, consistent with the boundary drawn in Section 1.3.
 
 We stress that these are *directional* results appropriate for hypothesis generation and teaching. We report them as trends, not as calibrated quantitative predictions.
+
+![Figure 3. Mechanistic trend exploration across design and context perturbations.](figures/figure3_mechanistic_trends.png)
+
+**Figure 3 | Mechanistic trend exploration across design and context perturbations.** Five scripted scenarios were run with a fixed deterministic seed (20250706) and identical agent counts; only the CAR construct or TME parameter was varied. **a**, Tumor cell count over simulated time: CD147 (ECM-degradation domain) shows continuous tumor growth because this domain does not phagocytose, while the remaining four scenarios maintain tumour counts in a comparable envelope. **b**, Cumulative phagocytosis events: CD147 records zero events (consistent with its non-phagocytic mechanism), while HER2-low (affinity = 3) accumulates events more slowly than baseline, reflecting the recognition-threshold dependence of the phagocytosis module. **c**, Mean ECM density: CD147 degrades ECM most rapidly (the module's designed mechanism), while all other scenarios show a slower, passive decline. **d**, Terminal cell composition stacked by type; CD147's final scene is dominated by tumour cells (106 versus ~60–65 in other scenarios), illustrating how a mechanism change — not a rate change — qualitatively reorganizes the population. Note that discrete M1/M2 classification and CD8⁺ activation remained near baseline under this parameterization (Section 5.2), which is consistent with the mechanism-inspired boundary stated in Section 1.3; we therefore do not plot those readouts as separate panels. Trajectories were generated by the deterministic engine and are bit-for-bit reproducible. Source data are provided as a Source Data file.
+
+![Figure 4. Spatial TME snapshots at simulation end.](figures/figure4_spatial_snapshot.png)
+
+**Figure 4 | Spatial TME snapshots at simulation end.** Agent positions at the terminal time step for three representative scenarios, plotted in the 800 × 600 spatial-unit domain with cell-type-specific markers (green circles, CAR-M; blue squares, WT macrophage; red triangles, tumour cell; gold diamonds, CD8⁺ T cell). **a**, Baseline (CT-0508-inspired): a compact tumour cluster is surrounded by a mixed immune infiltrate. **b**, High TGF-β: tumour cells remain more dispersed, reflecting reduced immune pressure at this parameterization. **c**, CD147 (ECM degradation): tumour cell count is highest (106), consistent with the non-phagocytic mechanism of this domain and the ECM-degradation trajectory shown in Figure 3c. Positions are deterministic outputs of the fixed-seed engine run. Source data are provided as a Source Data file.
 
 ### 5.3 Interactivity and reproducibility
 
