@@ -1,0 +1,16 @@
+# Cloudflare Pages 缓存策略
+# 带内容哈希的构建产物：长期缓存 immutable
+/assets/*
+  Cache-Control: public, max-age=31536000, immutable
+
+# 无内容哈希的静态资源：短缓存，避免更新后用户命中旧文件
+/models/*
+  Cache-Control: public, max-age=2592000
+/images/*
+  Cache-Control: public, max-age=2592000
+
+# 入口 HTML 与幻灯片：始终重新校验
+/
+  Cache-Control: no-cache
+/slides/*
+  Cache-Control: no-cache
