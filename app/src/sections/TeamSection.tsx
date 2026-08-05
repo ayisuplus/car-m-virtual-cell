@@ -18,8 +18,8 @@ const CARDS = [
     color: '#00ccff',
     items: [
       'Multi-scale simulation (molecular → cellular → tissue)',
-      'PyTorch neural surrogate (>98% accuracy, 100x speedup)',
-      'BioFVM-inspired cytokine diffusion',
+      'Neural surrogate (reproducible training + benchmark)',
+      'Explicit finite-difference cytokine diffusion',
       'scRNA-seq data integration pipeline',
     ],
   },
@@ -31,8 +31,8 @@ const CARDS = [
       'Carisma Therapeutics CT-0508 clinical data',
       'CZI Virtual Cell Initiative',
       'PhysiCell framework',
-      'CellForge (Yale, 2026) multi-agent design',
-      "Zhang Zemin 'AI Virtual Tumor' concept (2026)",
+      'CellForge (arXiv 2025) agentic virtual-cell design',
+      "Zhang Zemin 'Virtual Tumor' concept (2026)",
     ],
   },
   {

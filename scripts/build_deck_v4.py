@@ -6,6 +6,7 @@ Embeds real website screenshots + RunningHub scientific illustrations.
 Self-contained: can be understood without live demo.
 """
 import os
+import json
 from pptx import Presentation
 from pptx.util import Inches, Pt, Emu
 from pptx.dml.color import RGBColor
@@ -340,29 +341,41 @@ set_notes(s, """The TME model includes 10 factors on a reaction-diffusion grid. 
 # ============================================================
 # SLIDE 11: NEURAL SURROGATE (performance)
 # ============================================================
+# Read measured benchmark so the deck always agrees with the data
+# (scripts/benchmark-surrogate.mjs -> paper/figures/data/benchmark_results.json).
+_BENCH_PATH = os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                           '..', 'paper', 'figures', 'data', 'benchmark_results.json')
+with open(_BENCH_PATH) as _f:
+    _B = json.load(_f)
+_SURR_US = _B['surrogate_us']
+_ODE_US = _B['ode_us']
+_SPEEDUP = _B['speedup']
+_FRAME_MS = _B['frame_ms_surrogate_N55']
+_HEADROOM = round(16.7 / _FRAME_MS, 0)
+
 s = prs.slides.add_slide(prs.slide_layouts[6])
 add_shape_bg(s, NAVY)
 add_text_box(s, Inches(0.8), Inches(0.3), Inches(11), Inches(0.7),
-             "Neural Surrogate: ~8x Speedup", 32, TEAL, True)
+             f"Neural Surrogate: ~{_SPEEDUP:.0f}x Speedup", 32, TEAL, True)
 # Left: surrogate illustration
 surr_path = os.path.join(ART, 'surrogate-mlp.jpg')
 add_image_fit(s, surr_path, Inches(0.3), Inches(1.2), Inches(6.5), Inches(3.5))
 # Right: benchmark card
 add_card(s, Inches(7), Inches(1.3), Inches(5.8), Inches(3.3))
 add_multi_text(s, Inches(7.3), Inches(1.5), Inches(5.2), Inches(3), [
-    ("Performance Benchmark", 18, CYAN, True, PP_ALIGN.LEFT),
+    ("Performance Benchmark (measured, 11 replicates)", 18, CYAN, True, PP_ALIGN.LEFT),
     ("", 6, WHITE, False, PP_ALIGN.LEFT),
-    ("Neural Surrogate:  ~1.5 us / cell", 16, ACCENT, True, PP_ALIGN.LEFT),
-    ("ODE (RK4):          ~12 us / cell", 16, LIGHT_GRAY, False, PP_ALIGN.LEFT),
-    ("Speedup:              ~8x", 20, TEAL, True, PP_ALIGN.LEFT),
+    (f"Neural Surrogate:  ~{_SURR_US:.2f} us / cell", 16, ACCENT, True, PP_ALIGN.LEFT),
+    (f"ODE (RK4):          ~{_ODE_US:.2f} us / cell", 16, LIGHT_GRAY, False, PP_ALIGN.LEFT),
+    (f"Speedup:              ~{_SPEEDUP:.1f}x", 20, TEAL, True, PP_ALIGN.LEFT),
     ("", 6, WHITE, False, PP_ALIGN.LEFT),
-    ("N=55 cells: 0.08 ms/frame (60fps headroom ~206x)", 13, LIGHT_GRAY, False, PP_ALIGN.LEFT),
+    (f"N=55 cells: {_FRAME_MS:.2f} ms/frame (60fps headroom ~{_HEADROOM:.0f}x)", 13, LIGHT_GRAY, False, PP_ALIGN.LEFT),
 ])
 # Bottom: AI panel screenshot
 shot_ai = os.path.join(SHOTS, '09-ai-panel.png')
 add_image_fit(s, shot_ai, Inches(0.5), Inches(5), Inches(12.3), Inches(2.3))
-set_notes(s, """The most worthwhile engineering point. The polarization equation - every cell every frame must compute M1 vs M2. If we honestly solve ODE, 100+ cells real-time will lag every frame. So we use a neural surrogate.
-Measured: surrogate ~1.5us/cell, equivalent ODE ~12us, about 8x speedup. N~55 cells per frame polarization < 0.1ms, 60fps margin sufficient.
+set_notes(s, f"""The most worthwhile engineering point. The polarization equation - every cell every frame must compute M1 vs M2. If we honestly solve ODE, 100+ cells real-time will lag every frame. So we use a neural surrogate.
+Measured (median of 11 timed replicates): surrogate ~{_SURR_US:.2f}us/cell, equivalent ODE ~{_ODE_US:.2f}us, about {_SPEEDUP:.1f}x speedup. N~55 cells per frame polarization {_FRAME_MS:.2f}ms, 60fps margin sufficient.
 Open the AI panel parameter sweep on website. Fast is not for showing off - fast makes 'every frame giving 100+ cells a decision' possible.""")
 
 # ============================================================

@@ -37,17 +37,34 @@ def write(path, rows, header):
     print(f"  wrote {os.path.basename(path)} ({len(rows)} rows)")
 
 
-# ---- Figure 2: latency means + scaling curve -----------------------------
-# Documented representative benchmark means (Sec 5.1 / Table 2). These are the
-# values plotted; per-call latency is a timing mean, not a biological replicate.
+# ---- Figure 2: latency medians + scaling curve ---------------------------
+# Measured values from scripts/benchmark-surrogate.mjs (11 timed replicates,
+# median reported), stored verbatim in data/benchmark_results.json. These are
+# per-call latency medians on a single machine — a timing measurement, not a
+# biological replicate. IQR and 95% bootstrap CI on the speedup are in the JSON.
+BENCH_PATH = os.path.join(BASE, 'data', 'benchmark_results.json')
+if os.path.exists(BENCH_PATH):
+    with open(BENCH_PATH) as f:
+        BENCH = json.load(f)
+    surr_us = BENCH['surrogate_us']
+    ode_us = BENCH['ode_us']
+else:
+    raise SystemExit(
+        'data/benchmark_results.json not found — run scripts/benchmark-surrogate.mjs first')
+
+frame_surr = BENCH['frame_ms_surrogate_N55']
+frame_ode = BENCH['frame_ms_ode_N55']
+headroom_surr = round(16.7 / frame_surr, 1)
+headroom_ode = round(16.7 / frame_ode, 1)
+
 write(os.path.join(OUT, 'SourceData_Figure2_latency.csv'),
-      [['Neural surrogate', 1.5, 0.08, 206],
-       ['ODE (RK4)', 12.0, 0.66, 25]],
+      [['Neural surrogate', round(surr_us, 3), round(frame_surr, 3), headroom_surr],
+       ['ODE (RK4)', round(ode_us, 3), round(frame_ode, 3), headroom_ode]],
       ['method', 'per_call_latency_us', 'per_frame_ms_N55', 'headroom_60fps_x'])
 
 N = [20, 40, 55, 80, 100, 150]
 write(os.path.join(OUT, 'SourceData_Figure2_scaling.csv'),
-      [[n, round(1.5 * n / 1000, 4), round(12.0 * n / 1000, 4)] for n in N],
+      [[n, round(surr_us * n / 1000, 4), round(ode_us * n / 1000, 4)] for n in N],
       ['living_agents_N', 'surrogate_per_frame_ms', 'ode_per_frame_ms'])
 
 # ---- Figure 3 a-c: time series -------------------------------------------

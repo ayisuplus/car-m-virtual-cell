@@ -1,15 +1,13 @@
-import { useEffect, useRef, useState } from 'react';
-import { Activity, Zap, Play, Clock, Gauge, Sparkles } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Activity, Zap, Play, Gauge, Sparkles } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
 import { Slider } from '@/components/ui/slider';
 import { neuralSurrogatePredict, getModelInfo } from '@/lib/simulation/neuralSurrogate';
 
-const ODE_MS = 847;
 const modelInfo = getModelInfo();
-const NN_MS = 0.3;
-const SPEEDUP = Math.round(ODE_MS / NN_MS);
 const SWEEP_RUNS = 50;
+const BENCH_ITERS = 20000;
 
 interface Cytokines {
   ifn: number;
@@ -18,8 +16,9 @@ interface Cytokines {
   tgf: number;
 }
 
-function computeODE(c: Cytokines) {
-  // Simulated slow ODE solver (same biological model used for training)
+// The analytic generator the surrogate approximates (same equations as
+// scripts/train-surrogate.mjs). This is the reference, not a slow ODE solver.
+function computeReferenceODE(c: Cytokines) {
   const sig = (x: number) => 1 / (1 + Math.exp(-Math.max(-10, Math.min(10, x))));
   const m1 = sig(3.5 * c.ifn - 1.5 * c.il4 - 0.8 * c.il10 - 0.5 * c.tgf + 0.5);
   const m2 = sig(2.5 * c.il4 + 2.0 * c.il10 + 1.8 * c.tgf + 0.3 - 1.0 * c.ifn);
@@ -40,88 +39,112 @@ function randomCytokines(): Cytokines {
   };
 }
 
+// Live micro-benchmark: actually times both code paths in this browser.
+// Numbers are measured on the viewer's machine, never hard-coded.
+function measureBenchmark() {
+  const inputs: Cytokines[] = [];
+  for (let i = 0; i < BENCH_ITERS; i++) inputs.push(randomCytokines());
+
+  // Warm-up (JIT)
+  for (let i = 0; i < 2000; i++) {
+    const c = inputs[i % inputs.length];
+    computeNN(c);
+    computeReferenceODE(c);
+  }
+
+  let sink = 0;
+  const t0 = performance.now();
+  for (let i = 0; i < BENCH_ITERS; i++) {
+    const c = inputs[i];
+    const r = computeNN(c);
+    sink += r.m1;
+  }
+  const t1 = performance.now();
+  for (let i = 0; i < BENCH_ITERS; i++) {
+    const c = inputs[i];
+    const r = computeReferenceODE(c);
+    sink += r.m1;
+  }
+  const t2 = performance.now();
+  if (sink === Infinity) throw new Error('unreachable');
+  const nnUs = ((t1 - t0) / BENCH_ITERS) * 1000;
+  const odeUs = ((t2 - t1) / BENCH_ITERS) * 1000;
+  return { nnUs, odeUs, speedup: odeUs / nnUs };
+}
+
 export default function NeuralSurrogateDemo() {
   const [cytokines, setCytokines] = useState<Cytokines>({ ifn: 0.5, il4: 0.3, il10: 0.2, tgf: 0.4 });
   const [outputs, setOutputs] = useState({ m1: 0.5, m2: 0.5 });
-  const [odeProgress, setOdeProgress] = useState(100);
-  const [odeSolving, setOdeSolving] = useState(false);
-  const [odeOutputs, setOdeOutputs] = useState<{ m1: number; m2: number } | null>(null);
-  const timerRef = useRef<number | null>(null);
+  const [refOutputs, setRefOutputs] = useState<{ m1: number; m2: number } | null>(null);
+  const [bench, setBench] = useState<{ nnUs: number; odeUs: number; speedup: number } | null>(null);
+  const [runningBench, setRunningBench] = useState(false);
 
   useEffect(() => {
     const nnOut = computeNN(cytokines);
     setOutputs(nnOut);
-    setOdeSolving(true);
-    setOdeProgress(0);
-    const start = Date.now();
-    timerRef.current = window.setInterval(() => {
-      const elapsed = Date.now() - start;
-      const pct = Math.min(100, (elapsed / ODE_MS) * 100);
-      setOdeProgress(pct);
-      if (elapsed >= ODE_MS) {
-        if (timerRef.current) window.clearInterval(timerRef.current);
-        setOdeSolving(false);
-        setOdeOutputs(computeODE(cytokines));
-      }
-    }, 30);
-    return () => {
-      if (timerRef.current) window.clearInterval(timerRef.current);
-    };
+    setRefOutputs(computeReferenceODE(cytokines));
   }, [cytokines]);
 
-  const [benchmark, setBenchmark] = useState<{
+  const [sweep, setSweep] = useState<{
     running: boolean;
     run: number;
-    odeTotal: number;
-    nnTotal: number;
     accuracy: number[];
-    avgAccuracy?: number;
   } | null>(null);
 
   const runBenchmark = () => {
-    setBenchmark({ running: true, run: 0, odeTotal: 0, nnTotal: 0, accuracy: [] });
+    setSweep({ running: true, run: 0, accuracy: [] });
     const N = SWEEP_RUNS;
     let i = 0;
     const results: number[] = [];
 
     const next = () => {
       if (i >= N) {
-        const avgAccuracy = results.reduce((a, b) => a + b, 0) / results.length;
-        setBenchmark(prev => (prev ? { ...prev, running: false, avgAccuracy } : null));
+        setSweep(prev => (prev ? { ...prev, running: false } : null));
         return;
       }
       const c = randomCytokines();
       setCytokines(c);
-      // Real accuracy: compare neural surrogate against ODE ground truth
-      const ode = computeODE(c);
+      // Real accuracy: surrogate vs the reference generator it approximates
+      const ode = computeReferenceODE(c);
       const nn = computeNN(c);
       const m1Err = Math.abs(ode.m1 - nn.m1);
       const m2Err = Math.abs(ode.m2 - nn.m2);
       const accuracy = (1 - (m1Err + m2Err) / 2) * 100;
-      results.push(Math.max(85, accuracy));
+      results.push(accuracy);
 
-      setBenchmark(prev => ({
+      setSweep(prev => ({
         ...prev!,
         run: i + 1,
-        odeTotal: (i + 1) * ODE_MS,
-        nnTotal: (i + 1) * NN_MS,
         accuracy: [...results],
       }));
       i++;
-      setTimeout(next, 100);
+      setTimeout(next, 30);
     };
     next();
   };
 
-  const disabled = benchmark?.running ?? false;
+  const runMicroBench = () => {
+    setRunningBench(true);
+    // Yield to the event loop so the button state paints before the blocking run
+    setTimeout(() => {
+      const r = measureBenchmark();
+      setBench(r);
+      setRunningBench(false);
+    }, 30);
+  };
+
+  const avgAccuracy = sweep && sweep.accuracy.length
+    ? sweep.accuracy.reduce((a, b) => a + b, 0) / sweep.accuracy.length
+    : null;
 
   return (
     <div className="mt-16 glass-panel rounded-xl p-6 md:p-8">
       <div className="mb-6">
-        <h3 className="text-xl font-bold text-white mb-2">Neural Surrogate Speed Demo</h3>
+        <h3 className="text-xl font-bold text-white mb-2">Neural Surrogate Demo</h3>
         <p className="text-sm text-slate-400">
-          Trained MLP ({modelInfo.architecture.join('->')}, {modelInfo.accuracy}% validation agreement, {modelInfo.parameterCount.toLocaleString()} params)
-          vs traditional ODE solver on macrophage polarization.
+          Trained MLP ({modelInfo.architecture.join('→')}, {modelInfo.accuracy}% validation
+          phenotype agreement, {modelInfo.parameterCount.toLocaleString()} params) vs the analytic
+          ODE-style generator it approximates.
         </p>
       </div>
 
@@ -133,8 +156,8 @@ export default function NeuralSurrogateDemo() {
         </h4>
         <div className="grid sm:grid-cols-3 gap-3">
           <div className="flex items-start gap-2 text-xs text-slate-400">
-            <Clock className="w-3.5 h-3.5 text-cyan-400 mt-0.5 flex-shrink-0" />
-            <span>Sub-millisecond inference replaces multi-second ODE integration.</span>
+            <Zap className="w-3.5 h-3.5 text-cyan-400 mt-0.5 flex-shrink-0" />
+            <span>Removes the per-cell polarization cost from the ABM hot path.</span>
           </div>
           <div className="flex items-start gap-2 text-xs text-slate-400">
             <Gauge className="w-3.5 h-3.5 text-emerald-400 mt-0.5 flex-shrink-0" />
@@ -142,38 +165,28 @@ export default function NeuralSurrogateDemo() {
           </div>
           <div className="flex items-start gap-2 text-xs text-slate-400">
             <Activity className="w-3.5 h-3.5 text-purple-400 mt-0.5 flex-shrink-0" />
-            <span>Maintains biological fidelity within a ~3% error margin.</span>
+            <span>Trained reproducibly (scripts/train-surrogate.mjs, seed {20250706}).</span>
           </div>
         </div>
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Traditional ODE Solver */}
+        {/* Reference generator */}
         <div className="glass-panel rounded-xl p-5 border-rose-400/20">
           <div className="flex items-center gap-2 mb-4">
             <div className="w-8 h-8 rounded-lg bg-rose-400/10 flex items-center justify-center">
               <Activity className="w-4 h-4 text-rose-400" />
             </div>
-            <h4 className="font-semibold text-white">Traditional ODE Solver</h4>
+            <h4 className="font-semibold text-white">Reference ODE Generator</h4>
           </div>
 
-          <InputPanel values={cytokines} onChange={setCytokines} disabled={disabled} />
+          <InputPanel values={cytokines} onChange={setCytokines} />
 
-          {odeSolving ? (
-            <div className="mt-5">
-              <div className="flex justify-between text-xs text-slate-400 mb-1">
-                <span>Solving 20 ODEs...</span>
-                <span>{ODE_MS}ms</span>
-              </div>
-              <Progress value={odeProgress} className="h-2" />
-            </div>
-          ) : (
-            <div className="mt-5 text-xs text-slate-400">
-              Completed in <span className="text-rose-400 font-medium">{ODE_MS}ms</span>
-            </div>
-          )}
+          <div className="mt-5 text-xs text-slate-400">
+            Analytic steady-state map (training ground truth)
+          </div>
 
-          {odeOutputs && !odeSolving && <MiniBarChart outputs={odeOutputs} />}
+          {refOutputs && <MiniBarChart outputs={refOutputs} />}
         </div>
 
         {/* Neural Surrogate */}
@@ -185,10 +198,12 @@ export default function NeuralSurrogateDemo() {
             <h4 className="font-semibold text-white">Neural Surrogate</h4>
           </div>
 
-          <InputPanel values={cytokines} onChange={setCytokines} disabled={disabled} />
+          <InputPanel values={cytokines} onChange={setCytokines} />
 
           <div className="mt-5 text-xs text-slate-400">
-            Inference: <span className="text-cyan-400 font-medium">{NN_MS}ms</span> ({SPEEDUP.toLocaleString()}× faster)
+            {bench
+              ? <>Measured here: <span className="text-cyan-400 font-medium">{bench.nnUs.toFixed(2)} µs/call</span> (reference {bench.odeUs.toFixed(2)} µs/call, {bench.speedup.toFixed(1)}×)</>
+              : 'Run the micro-benchmark to measure timing on this machine'}
           </div>
 
           <MiniBarChart outputs={outputs} />
@@ -196,43 +211,46 @@ export default function NeuralSurrogateDemo() {
       </div>
 
       <div className="mt-6 flex flex-col sm:flex-row items-start sm:items-center gap-4">
-        <Button onClick={runBenchmark} disabled={disabled}>
-          <Play className="w-4 h-4" />
-          Run Parameter Sweep ({SWEEP_RUNS})
+        <Button onClick={runMicroBench} disabled={runningBench}>
+          <Zap className="w-4 h-4 mr-1" />
+          {runningBench ? 'Measuring…' : 'Run Micro-Benchmark'}
         </Button>
-        {benchmark && (
+        <Button onClick={runBenchmark} disabled={sweep?.running ?? false} variant="outline">
+          <Play className="w-4 h-4 mr-1" />
+          Agreement Sweep ({SWEEP_RUNS})
+        </Button>
+        {sweep && (
           <div className="text-sm text-slate-300">
-            {benchmark.running ? (
+            {sweep.running ? (
               <span className="flex items-center gap-2">
-                Sweep {benchmark.run} / {SWEEP_RUNS}...
-                <Progress value={(benchmark.run / SWEEP_RUNS) * 100} className="w-24 h-1.5" />
+                Sweep {sweep.run} / {SWEEP_RUNS}...
+                <Progress value={(sweep.run / SWEEP_RUNS) * 100} className="w-24 h-1.5" />
               </span>
-            ) : (
+            ) : avgAccuracy !== null ? (
               <>
-                {SWEEP_RUNS} runs —{' '}
-                <span className="text-rose-400">ODE {benchmark.odeTotal.toFixed(1)}ms</span>{' '}
-                vs{' '}
-                <span className="text-cyan-400">Neural {benchmark.nnTotal.toFixed(1)}ms</span>{' '}
-                ({Math.round(benchmark.odeTotal / benchmark.nnTotal)}× faster)
+                {SWEEP_RUNS} runs — mean agreement{' '}
+                <span className="text-cyan-400">{avgAccuracy.toFixed(2)}%</span>
               </>
-            )}
+            ) : null}
           </div>
         )}
       </div>
 
-      {benchmark && !benchmark.running && (
+      {avgAccuracy !== null && !(sweep?.running) && (
         <div className="mt-4 p-3 rounded-lg bg-emerald-500/10 border border-emerald-400/20">
           <div className="text-sm text-emerald-400 font-medium">
-            Accuracy: {(benchmark.accuracy.reduce((a, b) => a + b, 0) / benchmark.accuracy.length).toFixed(1)}%
+            Agreement: {avgAccuracy.toFixed(2)}% (this sweep) · {modelInfo.accuracy}% (held-out validation, training script)
           </div>
           <div className="text-xs text-slate-400 mt-1">
-            Neural surrogate matches ODE solver within {Math.round((1 - 0.97) * 100)}% error margin
+            Agreement = 1 − mean(|M1 error|, |M2 error|) vs the analytic generator. Full metrics
+            (MAE/R²) are printed by scripts/train-surrogate.mjs.
           </div>
         </div>
       )}
 
       <p className="mt-6 text-xs text-slate-500">
-        Model agreement is measured against the synthetic ODE training generator used in this prototype.
+        Model agreement is measured against the synthetic ODE-style training generator used in this
+        prototype — not against experimental data.
       </p>
     </div>
   );
@@ -241,21 +259,19 @@ export default function NeuralSurrogateDemo() {
 function InputPanel({
   values,
   onChange,
-  disabled,
 }: {
   values: Cytokines;
-  onChange: (c: Cytokines) => void;
-  disabled: boolean;
+  onChange: (v: Cytokines) => void;
 }) {
   const update = (key: keyof Cytokines, value: number) => {
     onChange({ ...values, [key]: value });
   };
   return (
     <div className="space-y-4">
-      <InputSlider label="IFN-γ" value={values.ifn} onChange={v => update('ifn', v)} disabled={disabled} />
-      <InputSlider label="IL-4" value={values.il4} onChange={v => update('il4', v)} disabled={disabled} />
-      <InputSlider label="IL-10" value={values.il10} onChange={v => update('il10', v)} disabled={disabled} />
-      <InputSlider label="TGF-β" value={values.tgf} onChange={v => update('tgf', v)} disabled={disabled} />
+      <InputSlider label="IFN-γ" value={values.ifn} onChange={v => update('ifn', v)} />
+      <InputSlider label="IL-4" value={values.il4} onChange={v => update('il4', v)} />
+      <InputSlider label="IL-10" value={values.il10} onChange={v => update('il10', v)} />
+      <InputSlider label="TGF-β" value={values.tgf} onChange={v => update('tgf', v)} />
     </div>
   );
 }
@@ -264,25 +280,22 @@ function InputSlider({
   label,
   value,
   onChange,
-  disabled,
 }: {
   label: string;
   value: number;
   onChange: (value: number) => void;
-  disabled: boolean;
 }) {
   return (
-    <div>
-      <div className="flex justify-between text-xs text-slate-300 mb-1">
-        <span>{label}</span>
-        <span>{value.toFixed(2)}</span>
+    <div className="space-y-1.5">
+      <div className="flex justify-between text-xs">
+        <span className="text-slate-300">{label}</span>
+        <span className="font-mono text-cyan-400">{value.toFixed(2)}</span>
       </div>
       <Slider
         value={[value]}
         min={0}
         max={1}
         step={0.01}
-        disabled={disabled}
         onValueChange={v => onChange(v[0])}
       />
     </div>

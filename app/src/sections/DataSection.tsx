@@ -268,8 +268,10 @@ export default function DataSection() {
             Tumor Microenvironment at <span className="text-purple-400">Single-Cell</span> Resolution
           </h2>
           <p className="text-slate-400 max-w-2xl mx-auto">
-            Cell composition and differential expression analysis from GSE289149 —
-            CAR-M treated (COMB7) vs untransduced (UTD) macrophages in HER2+ solid tumors.
+            Cell composition and differential expression from GSE289149 —
+            COMB7 CAR-M (CD40-LY9-FCRL1 combinatorial signaling domain) vs untransduced (UTD)
+            macrophages in PSMA-positive prostate tumor xenografts (humanized NCG mice,
+            intratumoral injection, harvested after 4 days).
           </p>
         </div>
 
@@ -315,6 +317,12 @@ export default function DataSection() {
               n = {VOLCANO_DATA.length} genes
             </span>
           </div>
+          <p className="mt-3 text-[11px] text-slate-500 leading-relaxed">
+            Statistical caveat: GEO GSE289149 contains one pooled sample per condition
+            (GSM8785344 UTD, GSM8785345 COMB7). Cell-level differential expression therefore
+            treats individual cells as replicates (pseudoreplication) and should be read as a
+            descriptive, exploratory comparison — not as a biologically replicated test.
+          </p>
         </div>
 
         {/* Data source footer */}

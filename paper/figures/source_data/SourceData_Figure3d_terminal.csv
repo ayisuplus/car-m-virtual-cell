@@ -1,6 +1,6 @@
 scenario,CAR_M,WT_macrophage,tumor_cell,CD8_T_cell
-baseline,12,8,31,10
-HER2_low,12,8,33,10
-no_CD47_block,12,8,30,10
-high_TGFb,12,8,33,10
+baseline,12,8,28,10
+HER2_low,12,8,26,10
+no_CD47_block,12,8,29,10
+high_TGFb,12,8,49,10
 CD147_ECM,12,8,76,10

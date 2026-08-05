@@ -64,10 +64,10 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     },
   },
   {
-    id: 'car-m-pd1-combo',
-    name: 'CAR-M + Anti-PD-1 Combo',
-    description: 'Combination therapy — enhanced T cell infiltration',
-    note: 'CAR-M phagocytosis releases tumor antigens → T cell priming → PD-1 blockade sustains T cell activity. Simulates synergy.',
+    id: 't-cell-rich-context',
+    name: 'T-Cell–Rich Context',
+    description: 'High CD8 seeding + reduced immunosuppression',
+    note: 'Models a T-cell–favorable context (e.g. the direction CAR-M + anti-PD-1 combination aims for). Note: the simulator does not model PD-1/PD-L1 explicitly — this preset changes seeding and suppression levels only.',
     icon: <Syringe className="w-4 h-4" />,
     accent: '#00ff88',
     simParams: {

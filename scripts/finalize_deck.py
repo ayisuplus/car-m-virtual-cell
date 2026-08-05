@@ -13,6 +13,15 @@ Changes (surgical, content-preserving):
 Everything else (layout, colors, other copy) is preserved as-is.
 """
 from pptx import Presentation
+import json, os
+
+# Measured benchmark (scripts/benchmark-surrogate.mjs -> benchmark_results.json)
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)),
+                       '..', 'paper', 'figures', 'data', 'benchmark_results.json')) as _f:
+    _B = json.load(_f)
+_SURR_US = _B['surrogate_us']
+_ODE_US = _B['ode_us']
+_SPEEDUP = _B['speedup']
 
 SRC = 'CAR-M-Simulator-demo-deck-v3-optimized.pptx'
 OUT = 'CAR-M-Simulator-demo-deck-v3-final.pptx'
@@ -37,8 +46,8 @@ for sh in slide8.shapes:
             para.text = '~8x'
     # caption under it
     elif '847ms' in txt or '0.3ms' in txt:
-        new_caption = ('实测：surrogate 推理约 1.5µs / 细胞，等价 ODE 求解约 12µs，'
-                       '约 8× 提速；N≈55 细胞时每帧极化 < 0.1ms，60fps 下余量充足。')
+        new_caption = (f'实测：surrogate 推理约 {_SURR_US:.2f}µs / 细胞，等价 ODE 求解约 {_ODE_US:.2f}µs，'
+                       f'约 {_SPEEDUP:.1f}× 提速（11 次计时中位数）；N≈55 细胞时每帧极化 < 0.1ms，60fps 下余量充足。')
         para = sh.text_frame.paragraphs[0]
         if para.runs:
             para.runs[0].text = new_caption
@@ -74,8 +83,8 @@ A 建立共同语境:跑 CT-0508-inspired baseline，固定 CAR-M 数量、肿�
 B 证明可探索:换 HER2-low / CD147 ECM degradation / cold tumor，只改输入,看趋势线变化。
 再拎一次边界:比的是趋势，不是预测哪个能进临床。
 C 对比:Compare 面板把 baseline vs 调参后并排一摆，一眼看到差异。""",
-8: """[最想说的工程点]极化方程每个细胞每帧都要算它往 M1 还是 M2 极化。老实解 ODE，上百细胞实时跑会卡。
-我们用神经 surrogate 替代这一步。实测:surrogate 推理约 1.5µs/细胞，等价 ODE 求解约 12µs，约 8× 提速;N≈55 细胞时每帧极化 <0.1ms，60fps 余量充足。
+8: f"""[最想说的工程点]极化方程每个细胞每帧都要算它往 M1 还是 M2 极化。老实解 ODE，上百细胞实时跑会卡。
+我们用神经 surrogate 替代这一步。实测（11 次计时中位数）:surrogate 推理约 {_SURR_US:.2f}µs/细胞，等价 ODE 求解约 {_ODE_US:.2f}µs，约 {_SPEEDUP:.1f}× 提速;N≈55 细胞时每帧极化 <0.1ms，60fps 余量充足。
 [打开 AI 面板跑 parameter sweep]快不是炫技——快才让「每帧给上百细胞做决策」变可能。画面动得顺，就是因为每帧替每个细胞算完了。
 (注:早期材料写的 847ms/0.3ms 无源码依据，已弃用,改用可复现的实测值。)""",
 9: """[收尾]最后一句:让机制假设先在屏幕上跑起来。

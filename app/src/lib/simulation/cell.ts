@@ -27,6 +27,24 @@ function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
 }
 
+/**
+ * Rescale a per-update probability to the actual timestep so stochastic event
+ * rates are frame-rate- and speed-independent.
+ *
+ * The model's per-update probabilities were calibrated against a nominal
+ * update interval of NOMINAL_DT = 0.1 simulated minutes. For a draw at a
+ * different dt we treat the nominal probability p as
+ * `p = 1 - (1-lambda)^1` with lambda = -ln(1-p) events per nominal interval,
+ * giving p(dt) = 1 - (1-p)^(dt / NOMINAL_DT). For small p this is ~ p*dt/0.1,
+ * but the exact form stays valid for large p and avoids overshooting 1.
+ */
+export function probPerUpdate(pPerNominalDt: number, dt: number, nominalDt = 0.1): number {
+  const p = clamp(pPerNominalDt, 0, 1);
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  return 1 - Math.pow(1 - p, dt / nominalDt);
+}
+
 export interface KillEvent {
   x: number;
   y: number;
@@ -253,7 +271,7 @@ export class CarMacrophage extends Cell {
             const d = vecDist(this.position, cell.position);
             if (d < this.radius + cell.radius + 5) {
               const tumor = cell as TumorCell;
-              if (this.canPhagocytose(tumor, carDesign)) {
+              if (this.canPhagocytose(tumor, carDesign, dt)) {
                 this.startPhagocytosis(tumor, carDesign.signalingDomain);
                 break;
               }
@@ -290,7 +308,7 @@ export class CarMacrophage extends Cell {
     else this.polarization = 'MIXED';
   }
 
-  private canPhagocytose(tumor: TumorCell, carDesign: CarDesign): boolean {
+  private canPhagocytose(tumor: TumorCell, carDesign: CarDesign, dt: number): boolean {
     const domain = carDesign.signalingDomain;
     // CD147 CAR-M specializes in ECM degradation, not phagocytosis
     if (domain === 'CD147') return false;
@@ -329,7 +347,8 @@ export class CarMacrophage extends Cell {
 
     this.debugPhagocytosisProb = pFinal;
 
-    return this.random() < pFinal;
+    // Rescale to the actual timestep so the rate is frame-rate-independent.
+    return this.random() < probPerUpdate(pFinal, dt);
   }
 
   private startPhagocytosis(tumor: TumorCell, domain: SignalingDomain): void {
@@ -500,8 +519,9 @@ export class WildTypeMacrophage extends Cell {
       }
     }
 
-    // Attempt phagocytosis (much lower rate than CAR-M)
-    if (!exhausted && this.random() < 0.01 && this.m1Score > 0.5) {
+    // Attempt phagocytosis (much lower rate than CAR-M).
+    // Both draws are rescaled by dt so the rate is frame-rate-independent.
+    if (!exhausted && this.m1Score > 0.5 && this.random() < probPerUpdate(0.01, dt)) {
       const nearby = getNeighbors(this.position.x, this.position.y, this.radius + 25);
       for (const cell of nearby) {
         if (cell.type === 'TUMOR_CELL' && cell.alive) {
@@ -509,7 +529,8 @@ export class WildTypeMacrophage extends Cell {
           if (d < this.radius + cell.radius + 5) {
             const tumor = cell as TumorCell;
             // WT macrophage phagocytosis is weak due to CD47
-            if (this.random() < 0.1 * (1 - tumor.cd47Expression * 0.9) * (1 - tumor.cd24Expression * 0.4)) {
+            const pWt = 0.1 * (1 - tumor.cd47Expression * 0.9) * (1 - tumor.cd24Expression * 0.4);
+            if (this.random() < probPerUpdate(pWt, dt)) {
               tumor.alive = false;
               this.phagocytosisCount++;
               this.energy = clamp(this.energy - 30, 0, 100);
@@ -772,7 +793,7 @@ export class CD8TCell extends Cell {
           const d = vecDist(this.position, cell.position);
           if (d < this.radius + cell.radius + 3) {
             const killProb = 0.08 * this.activationLevel * (1 - this.exhaustion * 0.8);
-            if (this.random() < killProb) {
+            if (this.random() < probPerUpdate(killProb, dt)) {
               cell.alive = false;
               this.killCount++;
               this.killAnimationTimer = 2;

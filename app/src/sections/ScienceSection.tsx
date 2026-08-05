@@ -130,16 +130,16 @@ export default function ScienceSection() {
                 <h3 className="text-xl font-semibold text-white group-hover:text-yellow-300 transition-colors duration-300">AI Virtual Tumor — Next Frontier</h3>
               </div>
               <p className="text-sm text-slate-400 leading-relaxed mb-5 max-w-4xl">
-                In 2026, Prof. Zhang Zemin's team at Peking University proposed the 'AI Virtual Tumor' concept: integrating cell composition, spatial organization, intercellular communication, and perturbation response rules to build tumor-scale ecosystem models. Our CAR-M simulator is a concrete engineering implementation of this vision.
+                In 2026, Prof. Zhang Zemin's team at Peking University proposed the 'Virtual Tumor' concept: integrating cell composition, spatial organization, intercellular communication, and perturbation response rules to build tumor-scale ecosystem models. Our CAR-M simulator is a concrete engineering implementation of this vision.
               </p>
               <div className="flex flex-wrap gap-2 mb-4">
-                {['CellForge', 'scFoundation', 'AIVC', 'Digital Twin'].map(tag => (
+                {['CellForge', 'GigaTIME', 'Lingshu-Cell', 'Digital Twin'].map(tag => (
                   <span key={tag} className="px-3 py-1 rounded-full text-[10px] bg-yellow-400/10 text-yellow-400 border border-yellow-400/20 hover:bg-yellow-400/20 transition-colors cursor-default font-medium">
                     {tag}
                   </span>
                 ))}
               </div>
-              <p className="text-[10px] text-slate-500 italic">Immunity & Inflammation, 2026.06 — Zhang et al.</p>
+              <p className="text-[10px] text-slate-500 italic">Inflammation, 2026 — Zhang et al.</p>
             </div>
           </div>
         </div>
@@ -222,7 +222,7 @@ export default function ScienceSection() {
         </div>
 
         <p className="text-center text-slate-400 text-sm mt-12 leading-relaxed max-w-3xl mx-auto">
-          This platform draws inspiration from recent breakthroughs: CellForge (Yale, 2026) for multi-agent model design, GigaTIME (Microsoft/Cell 2026) for virtual TME population modeling, and Lingshu-Cell (Alibaba DAMO, 2026) for whole-transcriptome virtual cell modeling.
+          This platform draws inspiration from recent breakthroughs: CellForge (Tang et al., arXiv 2025) for agentic virtual-cell model design, GigaTIME (Valanarasu et al., Cell 2026) for virtual TME population modeling, and Lingshu-Cell (Alibaba DAMO Academy, arXiv 2026) for transcriptome-level virtual cell modeling.
         </p>
       </div>
     </section>

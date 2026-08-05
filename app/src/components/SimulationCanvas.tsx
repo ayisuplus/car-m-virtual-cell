@@ -31,7 +31,9 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
     onEngineReadyRef.current = onEngineReady;
   }, [onEngineReady]);
 
-  // Initialize engine (one-shot; uses ref for stable callback so deps are correct)
+  // Initialize engine (one-shot per design/param change; uses refs for stable
+  // callbacks so deps are correct). Display-layer toggles (showField/showECM)
+  // are intentionally NOT in the deps — they must not recreate the engine.
   useEffect(() => {
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -72,7 +74,8 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
         cancelAnimationFrame(animationFrameRef.current);
       }
     };
-  }, [state.carDesign, state.simParams, showField, showECM]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [state.carDesign, state.simParams]);
 
   // Handle start/pause; design/params are updated via the dedicated effect below
   useEffect(() => {
@@ -136,14 +139,16 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
     return () => window.clearInterval(interval);
   }, []);
 
-  // Reset handling
-  const prevRunningRef = useRef(state.simulation.isRunning);
+  // Reset handling: react ONLY to the explicit resetCounter from the Reset
+  // button. Pause/start transitions never trigger a reset.
+  const resetCounter = state.simulation.resetCounter;
+  const prevResetRef = useRef(resetCounter);
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
 
-    // Detect transition from running to not running (reset)
-    if (prevRunningRef.current && !state.simulation.isRunning && state.simulation.stepCount === 0) {
+    if (prevResetRef.current !== resetCounter) {
+      prevResetRef.current = resetCounter;
       engine.reset();
       const canvas = canvasRef.current;
       const ctx = canvas?.getContext('2d');
@@ -153,9 +158,8 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
       setCellCount(engine.cells.length);
       setSimTime(engine.simTime);
     }
-
-    prevRunningRef.current = state.simulation.isRunning;
-  }, [state.simulation.isRunning, state.simulation.stepCount, showField, showECM]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resetCounter]);
 
   const handleStep = () => {
     const engine = engineRef.current;

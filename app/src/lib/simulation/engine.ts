@@ -1,4 +1,4 @@
-import { CarMacrophage, WildTypeMacrophage, TumorCell, CD8TCell, killEvents, clearKillEvents } from './cell';
+import { CarMacrophage, WildTypeMacrophage, TumorCell, CD8TCell, killEvents, clearKillEvents, probPerUpdate } from './cell';
 import { CytokineField } from './field';
 import type { Cell } from './cell';
 import type { CarDesign, SimParams, SimStatistics } from '@/types/simulation';
@@ -223,7 +223,7 @@ export class ABMEngine {
     }
 
     this.handleCD8Expansion();
-    this.handleProliferation();
+    this.handleProliferation(dt);
     this.cells = this.cells.filter(c => c.alive);
     this.statsTimer += dt;
     if (this.statsTimer >= 0.5) {
@@ -266,7 +266,7 @@ export class ABMEngine {
     this.handleCD8Expansion();
 
     // Tumor proliferation
-    this.handleProliferation();
+    this.handleProliferation(dt);
 
     // Remove dead cells
     this.cells = this.cells.filter(c => c.alive);
@@ -304,7 +304,7 @@ export class ABMEngine {
     }
   }
 
-  private handleProliferation(): void {
+  private handleProliferation(dt: number): void {
     const maxTumorCount = this.simParams.tumorCount * 3; // Allow up to 3x growth
     const tumorCells = this.cells.filter(c => c.type === 'TUMOR_CELL' && c.alive) as TumorCell[];
     const currentTumorCount = tumorCells.length;
@@ -312,11 +312,13 @@ export class ABMEngine {
     if (currentTumorCount >= maxTumorCount) return;
 
     for (const tumor of tumorCells) {
-      // Proliferation rate depends on oxygen and viability
+      // Proliferation rate depends on oxygen and viability.
+      // The per-update probability is rescaled by dt so the growth rate is
+      // frame-rate- and speed-independent.
       const env = this.field.getAt(tumor.position.x, tumor.position.y);
       const oxygenFactor = env.oxygen > 0.3 ? 1 : env.oxygen > 0.1 ? 0.3 : 0;
       const viabilityFactor = tumor.viability;
-      const prob = 0.003 * oxygenFactor * viabilityFactor; // per cell per update
+      const prob = probPerUpdate(0.003 * oxygenFactor * viabilityFactor, dt); // per cell per update
 
       if (this.random() < prob) {
         const angle = this.random() * Math.PI * 2;

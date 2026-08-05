@@ -23,6 +23,10 @@ const weightsPath = resolve(
 );
 
 // --- Load real trained weights out of the TS module -----------------------
+// Must stay in sync with app/src/lib/simulation/neuralSurrogate.ts:
+// weights are stored as [input][output], and we transpose into a flat
+// [output][input] buffer so the inference loop (which reads W[out*inSize + in])
+// applies the correct transformation.
 const raw = readFileSync(weightsPath, 'utf8');
 const jsonStart = raw.indexOf('{');
 const jsonEnd = raw.lastIndexOf('}');
@@ -33,11 +37,12 @@ const layerBiases = [];
 const layerSizes = [...model.architecture];
 for (const layer of model.layers) {
   const w = layer.weights;
-  const rows = w.length;
-  const cols = w[0].length;
+  const rows = w.length;      // inputs
+  const cols = w[0].length;   // output units (=== biases.length)
   const flat = new Float32Array(rows * cols);
-  for (let r = 0; r < rows; r++)
-    for (let c = 0; c < cols; c++) flat[r * cols + c] = w[r][c];
+  for (let r = 0; r < rows; r++)      // r = input index
+    for (let c = 0; c < cols; c++)    // c = output index
+      flat[c * rows + r] = w[r][c];   // store as [output][input]
   layerWeights.push(flat);
   layerBiases.push(new Float32Array(layer.biases));
 }
@@ -126,35 +131,105 @@ function bench(fn, iters, warmup = 5000) {
 }
 
 const ITERS = 200000;
-const surr = bench(neuralSurrogatePredict, ITERS);
-const ode = bench(polarizationODE, ITERS);
+const REPS = 11; // independent timed replicates per method (median + IQR reported)
 
-const perCellSurr = surr.perCallMs;
-const perCellODE = ode.perCallMs;
+function benchReplicates(fn, iters, reps, warmup = 5000) {
+  // One shared warm-up so JIT state is comparable across methods
+  for (let i = 0; i < warmup; i++) fn(...randInputs());
+  // prebuild inputs so RNG cost is excluded
+  const inputs = new Array(iters);
+  for (let i = 0; i < iters; i++) inputs[i] = randInputs();
+  const perCall = [];
+  let sink = 0;
+  for (let r = 0; r < reps; r++) {
+    const t0 = performance.now();
+    for (let i = 0; i < iters; i++) {
+      const res = fn(...inputs[i]);
+      sink += res[0];
+    }
+    const t1 = performance.now();
+    perCall.push((t1 - t0) / iters);
+  }
+  if (sink === Infinity) throw new Error('unreachable');
+  return perCall;
+}
+
+function medianIQR(arr) {
+  const s = [...arr].sort((a, b) => a - b);
+  const q = (p) => {
+    const idx = (s.length - 1) * p;
+    const lo = Math.floor(idx), hi = Math.ceil(idx);
+    return s[lo] + (s[hi] - s[lo]) * (idx - lo);
+  };
+  return { median: q(0.5), q1: q(0.25), q3: q(0.75), min: s[0], max: s[s.length - 1] };
+}
+
+const surrReps = benchReplicates(neuralSurrogatePredict, ITERS, REPS);
+const odeReps = benchReplicates(polarizationODE, ITERS, REPS);
+
+const surrStats = medianIQR(surrReps);
+const odeStats = medianIQR(odeReps);
+
+const perCellSurr = surrStats.median;
+const perCellODE = odeStats.median;
 const speedup = perCellODE / perCellSurr;
+
+// Bootstrap CI on the speedup ratio (resample replicate pairs)
+function speedupCI(surr, ode, nBoot = 10000) {
+  const ratios = [];
+  for (let b = 0; b < nBoot; b++) {
+    ratios.push(
+      ode[Math.floor(Math.random() * ode.length)] / surr[Math.floor(Math.random() * surr.length)]
+    );
+  }
+  const s = ratios.sort((a, b) => a - b);
+  return { lo: s[Math.floor(0.025 * nBoot)], hi: s[Math.floor(0.975 * nBoot)] };
+}
+const ci = speedupCI(surrReps, odeReps);
 
 // Realistic scene: N cells × F frames
 const N = 55; // typical alive-cell count in a running scene
 const FPS = 60;
 
+const env = {
+  node: process.version,
+  platform: process.platform,
+  arch: process.arch,
+  cpus: (typeof require === 'function' ? null : null),
+};
+try {
+  const os = await import('node:os');
+  env.cpuModel = os.cpus()[0]?.model ?? 'unknown';
+  env.cpuCores = os.cpus().length;
+  env.memGB = Math.round(os.totalmem() / 1024 ** 3);
+} catch { /* ignore */ }
+
 console.log('=== CAR-M Surrogate vs ODE micro-benchmark ===');
-console.log(`Node: ${process.version}`);
-console.log(`Iterations per method: ${ITERS.toLocaleString()}`);
+console.log(`Node: ${process.version} | ${env.platform}/${env.arch} | ${env.cpuModel ?? 'cpu'} (${env.cpuCores ?? '?'} cores, ${env.memGB ?? '?'} GB)`);
+console.log(`Iterations per method: ${ITERS.toLocaleString()} × ${REPS} replicates`);
 console.log('');
-console.log(`Surrogate  per-call: ${(perCellSurr * 1000).toFixed(3)} µs  (${perCellSurr.toFixed(5)} ms)`);
-console.log(`ODE (RK4)  per-call: ${(perCellODE * 1000).toFixed(3)} µs  (${perCellODE.toFixed(5)} ms)`);
-console.log(`Speedup (ODE/surrogate): ${speedup.toFixed(1)}x`);
+console.log(`Surrogate  per-call: median ${(perCellSurr * 1000).toFixed(3)} µs  [IQR ${(surrStats.q1 * 1000).toFixed(3)}–${(surrStats.q3 * 1000).toFixed(3)}]`);
+console.log(`ODE (RK4)  per-call: median ${(perCellODE * 1000).toFixed(3)} µs  [IQR ${(odeStats.q1 * 1000).toFixed(3)}–${(odeStats.q3 * 1000).toFixed(3)}]`);
+console.log(`Speedup (ODE/surrogate): ${speedup.toFixed(1)}x  [95% bootstrap CI ${ci.lo.toFixed(1)}–${ci.hi.toFixed(1)}]`);
 console.log('');
-console.log(`Per-frame cost for N=${N} cells:`);
+console.log(`Per-frame cost for N=${N} cells (median):`);
 console.log(`  Surrogate: ${(perCellSurr * N).toFixed(3)} ms/frame  → headroom at 60fps (16.7ms budget): ${(16.7 / (perCellSurr * N)).toFixed(0)}x`);
 console.log(`  ODE:       ${(perCellODE * N).toFixed(3)} ms/frame  → ${(perCellODE * N) > 16.7 ? 'EXCEEDS' : 'within'} 60fps budget`);
 console.log('');
 console.log(JSON.stringify({
   node: process.version,
+  platform: env.platform,
+  arch: env.arch,
+  cpu: env.cpuModel,
+  cpuCores: env.cpuCores,
   iters: ITERS,
+  replicates: REPS,
   surrogate_ms: perCellSurr,
   ode_ms: perCellODE,
+  surrogate_iqr_ms: [surrStats.q1, surrStats.q3],
+  ode_iqr_ms: [odeStats.q1, odeStats.q3],
   speedup,
+  speedup_ci95: [ci.lo, ci.hi],
   surrogate_us: perCellSurr * 1000,
   ode_us: perCellODE * 1000,
   frame_ms_surrogate_N55: perCellSurr * N,

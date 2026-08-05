@@ -286,10 +286,15 @@ export default function HeroSection() {
         {/* Key statistics — enhanced cards */}
         <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-10">
           <StatBadge value="4" label="Cell Types" color="#00ff88" numeric target={4} icon={<Microscope className="w-5 h-5" />} />
-          <StatBadge value="9" label="Cytokines" color="#00ccff" numeric target={9} icon={<Activity className="w-5 h-5" />} />
-          <StatBadge value="100x" label="Speed Boost" color="#ffcc00" icon={<Zap className="w-5 h-5" />} />
-          <StatBadge value="98%" label="Accuracy" color="#ff3366" icon={<Cpu className="w-5 h-5" />} />
+          <StatBadge value="9" label="TME Factors" color="#00ccff" numeric target={9} icon={<Activity className="w-5 h-5" />} />
+          <StatBadge value="≈8×" label="Surrogate Speedup" color="#ffcc00" icon={<Zap className="w-5 h-5" />} />
+          <StatBadge value="100%" label="Seeded Reproducibility" color="#ff3366" icon={<Cpu className="w-5 h-5" />} />
         </div>
+        <p className="mt-4 text-[11px] text-slate-500 max-w-xl mx-auto">
+          Speedup: surrogate vs RK4 ODE per-call latency, measured by scripts/benchmark-surrogate.mjs
+          (hardware-dependent; ~8× in the paper benchmark). See the Neural Surrogate panel for live
+          micro-benchmarks.
+        </p>
 
         {/* Feature pills — enhanced */}
         <div className="flex flex-wrap justify-center gap-4 mt-14 mb-14">

@@ -44,6 +44,7 @@ const initialState: AppState = {
     speed: 1,
     stepCount: 0,
     simTime: 0,
+    resetCounter: 0,
   },
   carDesign: initialCarDesign,
   simParams: initialSimParams,
@@ -76,7 +77,14 @@ function reducer(state: AppState, action: Action): AppState {
     case 'RESET':
       return {
         ...state,
-        simulation: { ...state.simulation, isRunning: false, isPaused: false, stepCount: 0, simTime: 0 },
+        simulation: {
+          ...state.simulation,
+          isRunning: false,
+          isPaused: false,
+          stepCount: 0,
+          simTime: 0,
+          resetCounter: state.simulation.resetCounter + 1,
+        },
         statistics: initialState.statistics,
       };
     default:

@@ -153,36 +153,50 @@ export class CytokineField {
   }
 
   private diffuse(dt: number): void {
-    // Grid-invariant diffusion coefficient (scaled by h²)
+    // Grid-invariant diffusion coefficient (scaled by h²).
+    // Explicit FTCS is stable only for r = D*dt/h² <= 0.25 (2D). With
+    // D = 1000 and h = 40, r = 0.625*dt, so large timesteps (e.g. the manual
+    // Step button at high speed) can exceed the stability bound. We therefore
+    // sub-step the diffusion: split dt into n sub-steps each satisfying
+    // r <= 0.25, which keeps the field finite at any user-selected speed.
     const D = 1000;
     const D_ecm = 50;
     const h2 = this.cellWidth * this.cellWidth;
-    const factor = D * dt / h2;
-    const factorEcm = D_ecm * dt / h2;
-    const newGrid: FieldCell[][] = this.grid.map(row =>
-      row.map(cell => ({ ...cell }))
-    );
+
+    const rMax = 0.25; // FTCS stability bound for the 2D 5-point Laplacian
+    const r = (D * dt) / h2;
+    const nSub = Math.max(1, Math.ceil(r / rMax));
+    const dtSub = dt / nSub;
+
     const keys: (keyof FieldCell)[] = [
       'oxygen', 'lactate', 'tgfBeta', 'ifnGamma', 'il4', 'il10', 'vegf', 'cxcl9', 'spp1', 'ecmDensity',
     ];
 
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        const old = this.grid[r][c];
-        for (const key of keys) {
-          const sum =
-            this.grid[Math.max(0, r - 1)][c][key] +
-            this.grid[Math.min(this.rows - 1, r + 1)][c][key] +
-            this.grid[r][Math.max(0, c - 1)][key] +
-            this.grid[r][Math.min(this.cols - 1, c + 1)][key];
-          const f = key === 'ecmDensity' ? factorEcm : factor;
-          const diff = f * (sum - 4 * old[key]);
-          newGrid[r][c][key] = this.clamp01(old[key] + diff);
+    for (let s = 0; s < nSub; s++) {
+      const factor = D * dtSub / h2;
+      const factorEcm = D_ecm * dtSub / h2;
+      const newGrid: FieldCell[][] = this.grid.map(row =>
+        row.map(cell => ({ ...cell }))
+      );
+
+      for (let rIdx = 0; rIdx < this.rows; rIdx++) {
+        for (let c = 0; c < this.cols; c++) {
+          const old = this.grid[rIdx][c];
+          for (const key of keys) {
+            const sum =
+              this.grid[Math.max(0, rIdx - 1)][c][key] +
+              this.grid[Math.min(this.rows - 1, rIdx + 1)][c][key] +
+              this.grid[rIdx][Math.max(0, c - 1)][key] +
+              this.grid[rIdx][Math.min(this.cols - 1, c + 1)][key];
+            const f = key === 'ecmDensity' ? factorEcm : factor;
+            const diff = f * (sum - 4 * old[key]);
+            newGrid[rIdx][c][key] = this.clamp01(old[key] + diff);
+          }
         }
       }
-    }
 
-    this.grid = newGrid;
+      this.grid = newGrid;
+    }
   }
 
   // Render the field as a heatmap overlay

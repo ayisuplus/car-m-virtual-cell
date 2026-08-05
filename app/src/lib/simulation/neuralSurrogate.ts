@@ -1,13 +1,15 @@
 /**
  * Neural Surrogate Model for Macrophage Polarization
- * 
+ *
  * A lightweight MLP inference engine that replaces the ODE solver
  * for predicting M1/M2 polarization and phagocytosis probability.
- * 
+ *
  * Architecture: 6 → 32 → 32 → 3 (ReLU hidden, Sigmoid output)
- * Trained on 30,000 synthetic samples from biologically-motivated ODE model
- * Validation accuracy: 95.96%
- * 
+ * Trained on 30,000 synthetic samples from a biologically-motivated ODE model
+ * Held-out validation: 99.98% phenotype-label agreement (MAE ≤ 0.001, R² ≈ 1)
+ * Training is reproducible: node scripts/train-surrogate.mjs (seed 20250706)
+ * Consistency test:        node scripts/test-surrogate.mjs
+ *
  * Input:  [IFN-γ, IL-4, IL-10, TGF-β, oxygen, lactate]
  * Output: [M1_score, M2_score, phagocytosis_probability]
  */
@@ -16,19 +18,27 @@ import { NEURAL_SURROGATE_MODEL } from './neuralSurrogateWeights';
 
 const model = NEURAL_SURROGATE_MODEL;
 
-// Pre-parse weights for performance
+// Pre-parse weights for performance.
+//
+// IMPORTANT (layout): the exported weight matrices are stored as
+// [input][output] — e.g. layer 0 is 6 (inputs) x 32 (units), matching the
+// bias vector length (32). The inference loop below expects a flat buffer
+// laid out as [output][input] (row-major with one row per output unit), so
+// we transpose during flattening here. A previous version copied the matrix
+// row-major ([input][output]) while indexing it as [output][input], which
+// silently applied the transposed transformation.
 const layerWeights: Float32Array[] = [];
 const layerBiases: Float32Array[] = [];
 const layerSizes: number[] = [...model.architecture];
 
 for (const layer of model.layers) {
   const w = layer.weights;
-  const rows = w.length;
-  const cols = w[0].length;
+  const rows = w.length;        // number of inputs
+  const cols = w[0].length;     // number of output units (=== biases.length)
   const flat = new Float32Array(rows * cols);
-  for (let r = 0; r < rows; r++) {
-    for (let c = 0; c < cols; c++) {
-      flat[r * cols + c] = w[r][c];
+  for (let r = 0; r < rows; r++) {        // r = input index
+    for (let c = 0; c < cols; c++) {      // c = output index
+      flat[c * rows + r] = w[r][c];       // store as [output][input]
     }
   }
   layerWeights.push(flat);

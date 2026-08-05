@@ -61,6 +61,9 @@ export interface SimulationState {
   speed: number;
   stepCount: number;
   simTime: number; // simulated minutes
+  /** Monotonic counter incremented by an explicit Reset request; the canvas
+   *  watches this instead of inferring resets from state transitions. */
+  resetCounter: number;
 }
 
 // Cytokine field cell

@@ -229,39 +229,43 @@ def plot_fig1():
 # FIGURE 2 — Surrogate performance (quantitative)
 # ============================================================
 def plot_fig2():
+    # Measured benchmark medians (scripts/benchmark-surrogate.mjs, 11 timed
+    # replicates); values live in data/benchmark_results.json so the figure,
+    # source data, and paper always agree.
+    with open(os.path.join(BASE, 'data', 'benchmark_results.json')) as f:
+        BENCH = json.load(f)
+    surr_us = BENCH['surrogate_us']
+    ode_us = BENCH['ode_us']
+
     fig, (ax1, ax2) = plt.subplots(1, 2, figsize=(7.0, 2.2),
                                      gridspec_kw={'width_ratios': [1, 1.3]})
-    # (a) per-call latency bar — values are the manuscript-stated representative
-    # benchmark means (Sec 5.1 / Table 2), kept identical across text, table,
-    # and figure for internal consistency (single micro-benchmark runs fluctuate
-    # within this order of magnitude; 1.5/12 us is the documented value).
     methods = ['Neural\nsurrogate', 'ODE\n(RK4)']
-    vals = [1.5, 12.0]
+    vals = [surr_us, ode_us]
     cols = [PALETTE["teal"], PALETTE["red_strong"]]
     bars = ax1.bar(methods, vals, color=cols, edgecolor=PALETTE["neutral_black"],
                    linewidth=0.6, width=0.6)
     ax1.set_ylabel('Per-call latency ($\\mu$s)')
-    ax1.set_ylim(0, 14.5)
+    ax1.set_ylim(0, max(vals) * 1.15)
     for b, v in zip(bars, vals):
-        ax1.text(b.get_x() + b.get_width()/2, v + 0.25, f'{v:.1f}',
+        ax1.text(b.get_x() + b.get_width()/2, v + max(vals)*0.02, f'{v:.2f}',
                  ha='center', va='bottom', fontsize=6, fontweight='bold')
-    ax1.text(0.5, 0.92, '~8$\\times$ speedup', transform=ax1.transAxes,
+    ax1.text(0.5, 0.92, f'{ode_us/surr_us:.1f}$\\times$ speedup', transform=ax1.transAxes,
              fontsize=7, fontweight='bold', color=PALETTE["blue_main"],
              ha='center',
              bbox=dict(boxstyle='round,pad=0.2', fc='white',
                        ec=PALETTE["blue_main"], lw=0.8))
     add_panel_label(ax1, 'a')
 
-    # (b) per-frame scaling (1.5 us and 12 us per cell; N=55 -> 0.08 / 0.66 ms)
+    # (b) per-frame scaling (median µs per cell; N=55 -> measured ms/frame)
     N = np.array([20, 40, 55, 80, 100, 150])
-    s_ms = 1.5 * N / 1000
-    o_ms = 12.0 * N / 1000
+    s_ms = surr_us * N / 1000
+    o_ms = ode_us * N / 1000
     ax2.plot(N, s_ms, 'o-', color=PALETTE["teal"], lw=1.2, ms=3, label='Neural surrogate')
     ax2.plot(N, o_ms, 's-', color=PALETTE["red_strong"], lw=1.2, ms=3, label='ODE (RK4)')
     ax2.axhline(16.7, ls='--', color=PALETTE["neutral_mid"], lw=0.6,
                 label='60 fps budget')
     ax2.axvline(55, ls=':', color=PALETTE["neutral_light"], lw=0.6)
-    ax2.text(58, 0.15, 'N = 55', fontsize=5, color=PALETTE["neutral_mid"])
+    ax2.text(58, max(o_ms)*0.02, 'N = 55', fontsize=5, color=PALETTE["neutral_mid"])
     ax2.set_xlabel('Living agents (N)')
     ax2.set_ylabel('Polarization cost / frame (ms)')
     ax2.legend(loc='upper left', fontsize=5)
