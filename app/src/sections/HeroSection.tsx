@@ -52,7 +52,7 @@ function StatBadge({ value, label, color, numeric, target, suffix = '', icon }: 
   return (
     <div
       ref={ref}
-      className="group relative flex flex-col items-center px-6 py-4 rounded-xl bg-slate-900/60 border border-slate-700/50 backdrop-blur-sm hover:border-cyan-400/30 transition-all duration-300 hover-lift"
+      className="group relative flex flex-col items-center rounded-xl border border-slate-700/60 bg-[#0b1621]/90 px-4 py-3.5 backdrop-blur-sm transition-colors hover:border-cyan-400/30"
     >
       {/* Glow effect on hover */}
       <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
@@ -62,7 +62,7 @@ function StatBadge({ value, label, color, numeric, target, suffix = '', icon }: 
         }} 
       />
       {icon && <div className="mb-2 relative z-10" style={{ color }}>{icon}</div>}
-      <div className="text-2xl font-bold font-mono relative z-10 group-hover:neon-text transition-all duration-300" style={{ color }}>
+      <div className="relative z-10 font-mono text-xl font-bold" style={{ color }}>
         {display}
       </div>
       <div className="text-[11px] text-slate-400 uppercase tracking-wider mt-1 relative z-10 font-medium">
@@ -152,6 +152,73 @@ const particles = Array.from({ length: 35 }, (_, i) => ({
   type: i % 3 === 0 ? 'orbit' : 'float',
 }));
 
+function AssayPreview() {
+  const cells = [
+    { left: '13%', top: '22%', color: '#00ff88', size: 18 },
+    { left: '28%', top: '62%', color: '#00ccff', size: 14 },
+    { left: '46%', top: '31%', color: '#00ff88', size: 20 },
+    { left: '67%', top: '19%', color: '#ffcc00', size: 11 },
+    { left: '75%', top: '68%', color: '#00ff88', size: 17 },
+    { left: '86%', top: '42%', color: '#00ccff', size: 13 },
+  ];
+
+  return (
+    <div className="instrument-panel w-full overflow-hidden rounded-2xl">
+      <div className="flex items-center justify-between border-b border-slate-700/60 px-5 py-4">
+        <div>
+          <div className="text-[10px] font-semibold uppercase tracking-[0.22em] text-slate-500">Virtual assay 01</div>
+          <div className="mt-1 text-sm font-semibold text-white">HER2+ Tumor Microenvironment</div>
+        </div>
+        <div className="flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/5 px-3 py-1.5 text-[10px] font-semibold uppercase tracking-wider text-emerald-300">
+          <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" />
+          Ready
+        </div>
+      </div>
+
+      <div className="assay-grid relative h-[440px] overflow-hidden bg-[#050b12]">
+        <div className="absolute left-1/2 top-1/2 h-44 w-44 -translate-x-1/2 -translate-y-1/2 rounded-full border border-purple-400/20 bg-purple-500/5 shadow-[0_0_70px_rgba(168,85,247,0.14)]" />
+        <div className="absolute left-1/2 top-1/2 h-24 w-24 -translate-x-1/2 -translate-y-1/2 rounded-full border border-purple-300/40 bg-purple-500/20 shadow-[0_0_35px_rgba(192,132,252,0.35)]">
+          <div className="absolute inset-5 rounded-full border border-purple-200/30 bg-purple-300/10" />
+        </div>
+        {cells.map((cell, index) => (
+          <div
+            key={index}
+            className="absolute rounded-full border border-white/20"
+            style={{
+              left: cell.left,
+              top: cell.top,
+              width: cell.size,
+              height: cell.size,
+              backgroundColor: `${cell.color}55`,
+              boxShadow: `0 0 16px ${cell.color}99`,
+            }}
+          />
+        ))}
+        <div className="absolute left-5 top-5 rounded-md border border-slate-700/70 bg-[#081019]/80 px-3 py-2 font-mono text-[10px] text-slate-400">
+          55 cells · t=0.0 min
+        </div>
+        <div className="absolute bottom-5 right-5 flex gap-2">
+          <span className="rounded-md border border-cyan-400/20 bg-cyan-400/5 px-2.5 py-1 text-[10px] text-cyan-300">CYTOKINES ON</span>
+          <span className="rounded-md border border-slate-700 bg-slate-900/70 px-2.5 py-1 text-[10px] text-slate-400">ECM OFF</span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-3 divide-x divide-slate-700/60 border-t border-slate-700/60 bg-[#0a141f]">
+        {[
+          ['12', 'CAR-M cells', '#00ff88'],
+          ['25', 'Tumor cells', '#cc66ff'],
+          ['50%', 'O₂ level', '#00ccff'],
+        ].map(([value, label, color]) => (
+          <div key={label} className="px-5 py-4">
+            <div className="font-mono text-xl font-bold" style={{ color }}>{value}</div>
+            <div className="mt-1 text-[10px] uppercase tracking-wider text-slate-500">{label}</div>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 /* ── Hero Section (Enhanced) ──────────────────────────────────── */
 export default function HeroSection() {
   const [scrollIndicatorVisible, setScrollIndicatorVisible] = useState(true);
@@ -190,10 +257,10 @@ export default function HeroSection() {
   }, []);
 
   return (
-    <section className="hero-section relative min-h-screen flex items-center justify-center overflow-hidden">
+    <section className="hero-section relative flex min-h-[calc(100vh-4rem)] items-center justify-center overflow-hidden px-10 py-20">
       {/* Layer 1: Base hero image with parallax */}
       <div
-        className="absolute inset-0 bg-cover bg-center opacity-[0.30] transition-transform duration-1000"
+        className="absolute inset-0 bg-cover bg-center opacity-[0.18] transition-transform duration-1000"
         style={{ 
           backgroundImage: 'url(/images/hero-bg.jpg)',
           transform: `translate(${mousePos.x * 0.5}px, ${mousePos.y * 0.5}px) scale(1.1)`
@@ -201,7 +268,7 @@ export default function HeroSection() {
       />
 
       {/* Layer 2: Animated gradient mesh (more vibrant) */}
-      <div className="absolute inset-0 animate-gradient-mesh opacity-70" />
+      <div className="absolute inset-0 animate-gradient-mesh opacity-30" />
 
       {/* Layer 3: DNA Helix background */}
       <DNAHelix />
@@ -251,12 +318,10 @@ export default function HeroSection() {
       </div>
 
       {/* Content with parallax */}
-      <div 
-        className="relative z-10 text-center px-6 max-w-5xl mx-auto"
-        style={{ transform: `translate(${mousePos.x * -0.3}px, ${mousePos.y * -0.3}px)` }}
-      >
+      <div className="relative z-10 mx-auto flex w-full max-w-[1320px] flex-col gap-12">
+        <div className="flex w-full flex-col">
         {/* Badge with pulse effect */}
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-cyan-400/40 bg-cyan-400/10 mb-8 animate-shimmer">
+        <div className="mb-7 inline-flex self-start items-center gap-2 rounded-full border border-cyan-400/30 bg-[#0a1722]/90 px-4 py-2">
           <div className="w-2 h-2 rounded-full bg-cyan-400 pulse-dot" />
           <span className="text-xs text-cyan-400 font-semibold tracking-widest uppercase">
             AI Virtual Cell Platform
@@ -265,18 +330,15 @@ export default function HeroSection() {
         </div>
 
         {/* Main title — enhanced with glitch effect */}
-        <h1 className="text-6xl md:text-8xl lg:text-9xl font-black mb-8 leading-[0.9]">
-          <span className="inline-block text-white typewriter-carm glitch-text" data-text="CAR-M">
-            CAR-M
-          </span>
-          <br />
-          <span className="inline-block bg-gradient-to-r from-cyan-400 via-emerald-400 to-purple-400 bg-clip-text text-transparent title-sub fade-in-subtitle bg-[length:200%_auto] animate-[gradient-rotate_6s_linear_infinite]">
+        <h1 className="mb-7 overflow-visible py-2 text-7xl font-black leading-[1.15] tracking-[-0.025em] xl:text-8xl">
+          <span className="block text-white">CAR-M</span>
+          <span className="mt-1 block overflow-visible bg-gradient-to-r from-cyan-300 via-cyan-400 to-emerald-300 bg-clip-text pb-[0.2em] leading-[1.2] text-transparent">
             Simulation Engine
           </span>
         </h1>
 
         {/* Subtitle with typing effect feel */}
-        <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-3xl mx-auto leading-relaxed font-light">
+        <p className="mb-8 max-w-4xl text-lg font-light leading-relaxed text-slate-300 xl:text-xl">
           A mechanism-informed <span className="text-cyan-400 font-medium">agent-based modeling</span> platform for exploring
           <br className="hidden md:block" />
           CAR-engineered macrophage behavior in the{' '}
@@ -284,7 +346,7 @@ export default function HeroSection() {
         </p>
 
         {/* Key statistics — enhanced cards */}
-        <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-10">
+        <div className="order-5 grid grid-cols-4 gap-3">
           <StatBadge value="4" label="Cell Types" color="#00ff88" numeric target={4} icon={<Microscope className="w-5 h-5" />} />
           <StatBadge value="9" label="TME Factors" color="#00ccff" numeric target={9} icon={<Activity className="w-5 h-5" />} />
           <StatBadge value="≈8×" label="Surrogate Speedup" color="#ffcc00" icon={<Zap className="w-5 h-5" />} />
@@ -297,7 +359,7 @@ export default function HeroSection() {
         </p>
 
         {/* Feature pills — enhanced */}
-        <div className="flex flex-wrap justify-center gap-4 mt-14 mb-14">
+        <div className="order-6 mt-5 flex flex-wrap gap-3">
           {[
             { icon: <Dna className="w-4 h-4" />, label: 'Multi-scale ABM', color: '#00ff88' },
             { icon: <Cpu className="w-4 h-4" />, label: 'Neural Surrogate', color: '#00ccff' },
@@ -305,7 +367,7 @@ export default function HeroSection() {
           ].map((pill, i) => (
             <div 
               key={i}
-              className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl border backdrop-blur-sm hover-lift cursor-default"
+              className="flex cursor-default items-center gap-2.5 rounded-lg border px-4 py-2 backdrop-blur-sm"
               style={{ 
                 borderColor: `${pill.color}30`,
                 backgroundColor: `${pill.color}08`,
@@ -321,19 +383,21 @@ export default function HeroSection() {
         {/* CTA — enhanced with animated gradient */}
         <button
           onClick={scrollToSim}
-          className="group relative inline-flex items-center gap-3 px-10 py-4 rounded-xl bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-400/70 transition-all duration-500 animate-cta-glow hover:scale-105 magnetic-hover overflow-hidden"
+          className="group relative order-4 mb-7 inline-flex w-fit items-center gap-3 overflow-hidden rounded-lg border border-cyan-200 bg-cyan-300 px-8 py-3.5 text-[#061019] shadow-[0_14px_45px_rgba(34,211,238,0.16)] transition-colors hover:bg-cyan-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-cyan-200"
         >
           {/* Animated background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-transparent to-purple-500/10 animate-[gradient-rotate_3s_linear_infinite] bg-[length:200%_100%]" />
+          <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent" />
           <span className="text-sm font-semibold relative z-10">Launch Simulation</span>
           <ArrowDown className="w-4 h-4 relative z-10 group-hover:translate-y-1 transition-transform duration-300" />
         </button>
+        </div>
+        <AssayPreview />
       </div>
 
       {/* Scroll-down indicator — enhanced */}
       <div
         ref={scrollIndicatorRef}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-opacity duration-500"
+        className="absolute bottom-7 left-1/2 flex -translate-x-1/2 flex-col items-center gap-2 transition-opacity duration-500"
         style={{ opacity: scrollIndicatorVisible ? 1 : 0 }}
       >
         <span className="text-[10px] text-cyan-400/60 uppercase tracking-widest">Scroll to explore</span>
