@@ -1,0 +1,14 @@
+# Python dependencies for the figure/source-data regeneration pipeline
+# (scripts/build_deck_v4.py, scripts/finalize_deck.py,
+#  paper/figures/plot_all_figures.py, paper/figures/export_source_data.py).
+#
+# Install:  python -m pip install -r requirements.txt
+# Usage:    see paper/figures/REGENERATE.md
+#
+# Lower bounds reflect the versions the figures were last regenerated with;
+# newer minor releases are expected to work.
+
+numpy>=1.24
+matplotlib>=3.7
+Pillow>=10.0
+python-pptx>=0.6.21

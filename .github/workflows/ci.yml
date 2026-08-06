@@ -1,7 +1,7 @@
 # ============================================================
 # CAR-M Virtual Cell Simulator — CI 工作流
 # 触发条件：push 到任意分支 / PR 到 main
-# 执行：类型检查 → 代码检查 → 构建验证
+# 执行：类型检查 → 代码检查 → 行为级测试 → 构建验证
 # ============================================================
 
 name: CI
@@ -54,11 +54,15 @@ jobs:
       - name: Lint
         run: npm run lint
 
-      # ---- 6. 生产构建 ----
+      # ---- 6. 行为级检查（surrogate 一致性 + 仿真核心单元测试） ----
+      - name: Test
+        run: npm test
+
+      # ---- 7. 生产构建 ----
       - name: Build
         run: npm run build
 
-      # ---- 7. 检查构建产物完整性 ----
+      # ---- 8. 检查构建产物完整性 ----
       - name: Verify build output
         run: |
           if [ ! -f dist/index.html ]; then
@@ -69,7 +73,7 @@ jobs:
           echo "📦 构建大小:"
           du -sh dist/
 
-      # ---- 8. 上传构建产物（供 deploy workflow 复用） ----
+      # ---- 9. 上传构建产物（供 deploy workflow 复用） ----
       - name: Upload build artifact
         uses: actions/upload-artifact@v4
         with:

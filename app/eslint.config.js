@@ -6,7 +6,9 @@ import tseslint from 'typescript-eslint'
 import { defineConfig, globalIgnores } from 'eslint/config'
 
 export default defineConfig([
-  globalIgnores(['dist']),
+  // _archive holds read-only dead code / superseded assets; keep lint signal
+  // focused on live code only.
+  globalIgnores(['dist', '_archive']),
   {
     files: ['**/*.{ts,tsx}'],
     extends: [
