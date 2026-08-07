@@ -9,7 +9,8 @@ test.describe('冒烟测试', () => {
     await page.goto('/');
     await expect(page).toHaveTitle(/CAR-M/);
     await expect(page.locator('nav')).toBeVisible();
-    await expect(page.locator('text=CAR-M Simulator').first()).toBeVisible();
+    // 导航品牌（PR #2 后文案为 CAR-M / Virtual Cell Lab，用稳定的 aria-label 验证）
+    await expect(page.getByRole('link', { name: 'CAR-M Simulator home' })).toBeVisible();
   });
 
   test('应该能够导航到仿真区域', async ({ page }) => {

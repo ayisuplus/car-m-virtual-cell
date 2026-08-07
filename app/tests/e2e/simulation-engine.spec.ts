@@ -2,10 +2,8 @@ import { test, expect } from './fixtures';
 import {
   navigateToSimulator,
   startSimulation,
-  stopSimulation,
   resetSimulation,
   switchToTab,
-  waitForPageReady,
 } from './fixtures';
 
 /**

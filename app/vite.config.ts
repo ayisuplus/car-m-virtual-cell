@@ -2,7 +2,7 @@ import path from "path"
 import { existsSync, mkdirSync } from "node:fs"
 import { cp } from "node:fs/promises"
 import react from "@vitejs/plugin-react"
-import { defineConfig, type Plugin } from "vite"
+import { defineConfig, type Plugin } from "vitest/config"
 
 /**
  * 构建后自动把 slides/（网页版演示 deck）同步到 dist/slides/。
@@ -39,6 +39,12 @@ export default defineConfig({
   plugins: [react(), copySlidesPlugin()],
   server: {
     port: 3000,
+  },
+  // Vitest 只跑 src/ 下的单元测试；tests/e2e/ 是 Playwright E2E 套件，
+  // 由 `npm run test:e2e` 运行，不能被 vitest 误抓（否则 test.describe 报错）
+  test: {
+    include: ['src/**/*.test.ts'],
+    exclude: ['tests/**', 'node_modules/**', 'dist/**'],
   },
   resolve: {
     alias: {

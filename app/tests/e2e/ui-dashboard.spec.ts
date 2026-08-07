@@ -3,7 +3,6 @@ import {
   navigateToSimulator,
   startSimulation,
   switchToTab,
-  waitForPageReady,
 } from './fixtures';
 
 /**

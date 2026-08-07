@@ -7,9 +7,7 @@ import { test as base, expect } from '@playwright/test';
  */
 
 // 扩展基础 test
-export const test = base.extend<{
-  // 可以在这里添加自定义 fixtures
-}>({});
+export const test = base.extend<Record<string, never>>({});
 
 export { expect };
 

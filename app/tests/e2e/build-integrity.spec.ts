@@ -28,8 +28,8 @@ test.describe('构建产物完整性', () => {
     await page.goto('/');
     await waitForPageReady(page);
     
-    // 验证 Hero 区域
-    await expect(page.locator('text=CAR-M Simulator')).toBeVisible();
+    // 验证 Hero/导航区域（PR #2 后品牌文案为 CAR-M / Virtual Cell Lab，用稳定的 aria-label 验证）
+    await expect(page.getByRole('link', { name: 'CAR-M Simulator home' })).toBeVisible();
     
     // 验证导航链接（使用更精确的选择器）
     await expect(page.getByRole('link', { name: 'Simulator', exact: true })).toBeVisible();
