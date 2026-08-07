@@ -4,11 +4,15 @@
  * - 提供默认初始化权重（用于开发/测试）
  * - 权重序列化为 Float32Array 以优化内存
  *
- * 默认权重：小型 GAT（用于开发阶段，后续由 Python 训练产物替换）
+ * 默认权重：小型 GAT（仅用于开发阶段的占位权重，尚未被训练产物替换）
  * 2 层 GAT:
  * - Layer 0: inDim=24, outDim=16, heads=4, concat=true → 64 dim
  * - Layer 1: inDim=64, outDim=3, heads=1, concat=false → 3 dim
  * 总参数 ~5K（轻量级）
+ *
+ * ⚠️ 学术诚信提示：默认权重是 Xavier 随机初始化（仅 seed 固定以保证可复现），
+ * 未经任何训练。GNN 模式下输出的 m1/m2/phago 仅验证推理管线的连通性，
+ * 不具有生物学意义，禁止在论文、deck 或 UI 中作为有效预测结果引用。
  *
  * 权重初始化使用与项目一致的可复现 LCG：
  * value = (value * 1664525 + 1013904223) >>> 0

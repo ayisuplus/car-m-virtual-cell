@@ -129,6 +129,12 @@ function vecNormalize(v) {
 function clamp(v, min, max) {
   return Math.max(min, Math.min(max, v));
 }
+function probPerUpdate(pPerNominalDt, dt, nominalDt = 0.1) {
+  const p = clamp(pPerNominalDt, 0, 1);
+  if (p <= 0) return 0;
+  if (p >= 1) return 1;
+  return 1 - Math.pow(1 - p, dt / nominalDt);
+}
 var killEvents = [];
 function clearKillEvents() {
   killEvents.length = 0;
@@ -232,7 +238,11 @@ var Cell = class {
       y: (down.tgfBeta - up.tgfBeta) / (2 * h)
     };
     const gradient = vecAdd(vecScale(gradIfn, m1Score), vecScale(gradTgf, m2Score));
-    this.velocity = vecAdd(this.velocity, vecScale(vecNormalize(gradient), 0.3));
+    const mag = Math.sqrt(gradient.x ** 2 + gradient.y ** 2);
+    if (mag > 1e-6) {
+      const strength = 0.3 * Math.min(1, mag / 0.01);
+      this.velocity = vecAdd(this.velocity, vecScale(vecNormalize(gradient), strength));
+    }
   }
   chemotaxisAway(from, strength) {
     const dir = { x: this.position.x - from.x, y: this.position.y - from.y };
@@ -268,9 +278,9 @@ var CarMacrophage = class extends Cell {
     this.targetTumor = null;
     this.debugPhagocytosisProb = 0;
   }
-  update(dt, env, _allCells, carDesign, bounds, field, getNeighbors) {
+  update(dt, env, _allCells, carDesign, bounds, field, getNeighbors, gnnPrediction) {
     this.age += dt;
-    this.updatePolarization(env, dt);
+    this.updatePolarization(env, dt, gnnPrediction);
     this.energy = clamp(this.energy - 0.05 * dt, 0, 100);
     if (env.oxygen > 0.3) {
       this.energy = clamp(this.energy + 0.1 * dt, 0, 100);
@@ -322,7 +332,7 @@ var CarMacrophage = class extends Cell {
             const d = vecDist(this.position, cell.position);
             if (d < this.radius + cell.radius + 5) {
               const tumor = cell;
-              if (this.canPhagocytose(tumor, carDesign)) {
+              if (this.canPhagocytose(tumor, carDesign, dt)) {
                 this.startPhagocytosis(tumor, carDesign.signalingDomain);
                 break;
               }
@@ -339,15 +349,23 @@ var CarMacrophage = class extends Cell {
       fieldCell.ecmDensity = Math.max(0, fieldCell.ecmDensity - 0.01 * dt);
     }
   }
-  updatePolarization(env, dt) {
-    const [nnM1, nnM2] = neuralSurrogatePredict(
-      env.ifnGamma,
-      env.il4,
-      env.il10,
-      env.tgfBeta,
-      env.oxygen,
-      env.lactate
-    );
+  updatePolarization(env, dt, gnnPrediction) {
+    let nnM1, nnM2;
+    if (gnnPrediction) {
+      nnM1 = gnnPrediction.m1;
+      nnM2 = gnnPrediction.m2;
+    } else {
+      const vals = neuralSurrogatePredict(
+        env.ifnGamma,
+        env.il4,
+        env.il10,
+        env.tgfBeta,
+        env.oxygen,
+        env.lactate
+      );
+      nnM1 = vals[0];
+      nnM2 = vals[1];
+    }
     const tau = 0.15;
     this.m1Score = clamp(this.m1Score + (nnM1 - this.m1Score) * tau * dt * 10, 0, 1);
     this.m2Score = clamp(this.m2Score + (nnM2 - this.m2Score) * tau * dt * 10, 0, 1);
@@ -355,7 +373,7 @@ var CarMacrophage = class extends Cell {
     else if (this.m2Score > 0.6) this.polarization = "M2";
     else this.polarization = "MIXED";
   }
-  canPhagocytose(tumor, carDesign) {
+  canPhagocytose(tumor, carDesign, dt) {
     const domain = carDesign.signalingDomain;
     if (domain === "CD147") return false;
     const antigenDensity = tumor.getAntigenExpression(carDesign.targetAntigen);
@@ -383,7 +401,7 @@ var CarMacrophage = class extends Cell {
       pFinal = clamp(pFinal * 2, 0, 1);
     }
     this.debugPhagocytosisProb = pFinal;
-    return this.random() < pFinal;
+    return this.random() < probPerUpdate(pFinal, dt);
   }
   startPhagocytosis(tumor, domain) {
     this.isPhagocytosing = true;
@@ -496,9 +514,9 @@ var WildTypeMacrophage = class extends Cell {
     this.energy = 100;
     this.phagocytosisCount = 0;
   }
-  update(dt, env, _allCells, _carDesign, bounds, field, getNeighbors) {
+  update(dt, env, _allCells, _carDesign, bounds, field, getNeighbors, gnnPrediction) {
     this.age += dt;
-    this.updatePolarization(env, dt);
+    this.updatePolarization(env, dt, gnnPrediction);
     this.energy = clamp(this.energy - 0.05 * dt, 0, 100);
     if (env.oxygen > 0.3) {
       this.energy = clamp(this.energy + 0.1 * dt, 0, 100);
@@ -526,14 +544,15 @@ var WildTypeMacrophage = class extends Cell {
         }
       }
     }
-    if (!exhausted && this.random() < 0.01 && this.m1Score > 0.5) {
+    if (!exhausted && this.m1Score > 0.5 && this.random() < probPerUpdate(0.01, dt)) {
       const nearby = getNeighbors(this.position.x, this.position.y, this.radius + 25);
       for (const cell of nearby) {
         if (cell.type === "TUMOR_CELL" && cell.alive) {
           const d = vecDist(this.position, cell.position);
           if (d < this.radius + cell.radius + 5) {
             const tumor = cell;
-            if (this.random() < 0.1 * (1 - tumor.cd47Expression * 0.9) * (1 - tumor.cd24Expression * 0.4)) {
+            const pWt = 0.1 * (1 - tumor.cd47Expression * 0.9) * (1 - tumor.cd24Expression * 0.4);
+            if (this.random() < probPerUpdate(pWt, dt)) {
               tumor.alive = false;
               this.phagocytosisCount++;
               this.energy = clamp(this.energy - 30, 0, 100);
@@ -547,15 +566,23 @@ var WildTypeMacrophage = class extends Cell {
     this.position = vecAdd(this.position, this.velocity);
     this.applyBounds(bounds);
   }
-  updatePolarization(env, dt) {
-    const [nnM1, nnM2] = neuralSurrogatePredict(
-      env.ifnGamma,
-      env.il4,
-      env.il10,
-      env.tgfBeta,
-      env.oxygen,
-      env.lactate
-    );
+  updatePolarization(env, dt, gnnPrediction) {
+    let nnM1, nnM2;
+    if (gnnPrediction) {
+      nnM1 = gnnPrediction.m1;
+      nnM2 = gnnPrediction.m2;
+    } else {
+      const vals = neuralSurrogatePredict(
+        env.ifnGamma,
+        env.il4,
+        env.il10,
+        env.tgfBeta,
+        env.oxygen,
+        env.lactate
+      );
+      nnM1 = vals[0];
+      nnM2 = vals[1];
+    }
     const tau = 0.15;
     this.m1Score = clamp(this.m1Score + (nnM1 - this.m1Score) * tau * dt * 10, 0, 1);
     this.m2Score = clamp(this.m2Score + (nnM2 - this.m2Score) * tau * dt * 10, 0, 1);
@@ -625,7 +652,7 @@ var TumorCell = class extends Cell {
     }
   }
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  update(dt, env, __allCells, _carDesign, bounds, __field, __getNeighbors) {
+  update(dt, env, __allCells, _carDesign, bounds, __field, __getNeighbors, _gnnPrediction) {
     this.age += dt;
     if (env.oxygen < 0.2) {
       this.viability = clamp(this.viability - 1e-3 * dt, 0, 1);
@@ -716,7 +743,8 @@ var CD8TCell = class extends Cell {
     this.killAnimationTimer = 0;
     this.readyToSpawn = false;
   }
-  update(dt, env, _allCells, _carDesign, bounds, field, getNeighbors) {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  update(dt, env, _allCells, _carDesign, bounds, field, getNeighbors, _gnnPrediction) {
     this.age += dt;
     this.exhaustion += (env.tgfBeta * 0.05 + env.il10 * 0.03) * dt;
     this.exhaustion -= env.ifnGamma * 0.02 * dt;
@@ -761,7 +789,7 @@ var CD8TCell = class extends Cell {
           const d = vecDist(this.position, cell.position);
           if (d < this.radius + cell.radius + 3) {
             const killProb = 0.08 * this.activationLevel * (1 - this.exhaustion * 0.8);
-            if (this.random() < killProb) {
+            if (this.random() < probPerUpdate(killProb, dt)) {
               cell.alive = false;
               this.killCount++;
               this.killAnimationTimer = 2;
@@ -974,11 +1002,10 @@ var CytokineField = class {
     const D = 1e3;
     const D_ecm = 50;
     const h2 = this.cellWidth * this.cellWidth;
-    const factor = D * dt / h2;
-    const factorEcm = D_ecm * dt / h2;
-    const newGrid = this.grid.map(
-      (row) => row.map((cell) => ({ ...cell }))
-    );
+    const rMax = 0.25;
+    const r = D * dt / h2;
+    const nSub = Math.max(1, Math.ceil(r / rMax));
+    const dtSub = dt / nSub;
     const keys = [
       "oxygen",
       "lactate",
@@ -991,18 +1018,25 @@ var CytokineField = class {
       "spp1",
       "ecmDensity"
     ];
-    for (let r = 0; r < this.rows; r++) {
-      for (let c = 0; c < this.cols; c++) {
-        const old = this.grid[r][c];
-        for (const key of keys) {
-          const sum = this.grid[Math.max(0, r - 1)][c][key] + this.grid[Math.min(this.rows - 1, r + 1)][c][key] + this.grid[r][Math.max(0, c - 1)][key] + this.grid[r][Math.min(this.cols - 1, c + 1)][key];
-          const f = key === "ecmDensity" ? factorEcm : factor;
-          const diff = f * (sum - 4 * old[key]);
-          newGrid[r][c][key] = this.clamp01(old[key] + diff);
+    for (let s = 0; s < nSub; s++) {
+      const factor = D * dtSub / h2;
+      const factorEcm = D_ecm * dtSub / h2;
+      const newGrid = this.grid.map(
+        (row) => row.map((cell) => ({ ...cell }))
+      );
+      for (let rIdx = 0; rIdx < this.rows; rIdx++) {
+        for (let c = 0; c < this.cols; c++) {
+          const old = this.grid[rIdx][c];
+          for (const key of keys) {
+            const sum = this.grid[Math.max(0, rIdx - 1)][c][key] + this.grid[Math.min(this.rows - 1, rIdx + 1)][c][key] + this.grid[rIdx][Math.max(0, c - 1)][key] + this.grid[rIdx][Math.min(this.cols - 1, c + 1)][key];
+            const f = key === "ecmDensity" ? factorEcm : factor;
+            const diff = f * (sum - 4 * old[key]);
+            newGrid[rIdx][c][key] = this.clamp01(old[key] + diff);
+          }
         }
       }
+      this.grid = newGrid;
     }
-    this.grid = newGrid;
   }
   // Render the field as a heatmap overlay
   render(ctx, showOxygen = false, showLactate = false, showECM = false) {
@@ -1040,6 +1074,201 @@ var CytokineField = class {
     return Math.max(0, Math.min(1, v));
   }
 };
+
+// src/lib/simulation/gatInference.ts
+var LEAKY_ALPHA = 0.2;
+function leakyRelu(x) {
+  return x >= 0 ? x : LEAKY_ALPHA * x;
+}
+function normalizeGATWeights(json) {
+  const raw = json;
+  const layers = (raw.layers ?? []).map((l) => {
+    const heads = l.heads ?? 1;
+    const inDim = l.in_dim ?? l.inDim ?? 0;
+    const outDim = l.out_dim ?? l.outDim ?? Math.floor(l.a_src.length / heads);
+    const W = l.W instanceof Float32Array ? l.W : new Float32Array(l.W.flat());
+    const a_src = l.a_src instanceof Float32Array ? l.a_src : new Float32Array(l.a_src);
+    const a_dst = l.a_dst instanceof Float32Array ? l.a_dst : new Float32Array(l.a_dst);
+    const biasRaw = l.bias ?? (l.bias === void 0 ? new Array(outDim * heads).fill(0) : l.bias);
+    const bias = biasRaw instanceof Float32Array ? biasRaw : new Float32Array(biasRaw);
+    const out = {
+      W,
+      a_src,
+      a_dst,
+      bias,
+      inDim,
+      outDim,
+      heads,
+      concat: l.concat ?? false
+    };
+    return out;
+  });
+  return { layers };
+}
+var GATModel = class _GATModel {
+  weights;
+  constructor(weights) {
+    this.weights = weights;
+  }
+  /**
+   * 批量前向推理。
+   * @param graph 细胞交互图
+   * @returns per-node 预测 + 注意力权重
+   */
+  forward(graph) {
+    const numNodes = graph.numNodes;
+    const numEdges = graph.numEdges;
+    const row = graph.edgeIndex.row;
+    const col = graph.edgeIndex.col;
+    const timestamp = performance.now();
+    if (numNodes === 0) {
+      return { predictions: new Float32Array(0), timestamp };
+    }
+    const degree = new Int32Array(numNodes);
+    for (let e = 0; e < numEdges; e++) degree[row[e]]++;
+    const offsets = new Int32Array(numNodes + 1);
+    for (let i = 0; i < numNodes; i++) offsets[i + 1] = offsets[i] + degree[i];
+    const cursor = offsets.slice();
+    const neighbors = new Int32Array(numEdges);
+    const edgeIds = new Int32Array(numEdges);
+    for (let e = 0; e < numEdges; e++) {
+      const src = row[e];
+      const pos = cursor[src]++;
+      neighbors[pos] = col[e];
+      edgeIds[pos] = e;
+    }
+    let features = graph.nodeFeatures;
+    let featureDim = graph.featureDim;
+    let attentionWeights;
+    for (let l = 0; l < this.weights.layers.length; l++) {
+      const layer = this.weights.layers[l];
+      const outTotal = layer.outDim * layer.heads;
+      const outFeatureDim = layer.concat ? outTotal : layer.outDim;
+      const hPrime = new Float32Array(numNodes * outTotal);
+      for (let i = 0; i < numNodes; i++) {
+        const featBase = i * featureDim;
+        const outBase = i * outTotal;
+        for (let h = 0; h < layer.heads; h++) {
+          for (let o = 0; o < layer.outDim; o++) {
+            const rowId = h * layer.outDim + o;
+            const wBase = rowId * layer.inDim;
+            let sum = layer.bias[rowId];
+            for (let k = 0; k < layer.inDim; k++) {
+              sum += layer.W[wBase + k] * features[featBase + k];
+            }
+            hPrime[outBase + rowId] = sum;
+          }
+        }
+      }
+      const eLogits = new Float32Array(numEdges * layer.heads);
+      for (let e = 0; e < numEdges; e++) {
+        const src = row[e];
+        const dst = col[e];
+        const srcBase = src * outTotal;
+        const dstBase = dst * outTotal;
+        for (let h = 0; h < layer.heads; h++) {
+          let at = 0;
+          for (let o = 0; o < layer.outDim; o++) {
+            const rowId = h * layer.outDim + o;
+            at += layer.a_src[rowId] * hPrime[srcBase + rowId] + layer.a_dst[rowId] * hPrime[dstBase + rowId];
+          }
+          eLogits[e * layer.heads + h] = leakyRelu(at);
+        }
+      }
+      const output = new Float32Array(numNodes * outFeatureDim);
+      const alphas = new Float32Array(numEdges * layer.heads);
+      const tempAlpha = new Float32Array(numEdges);
+      for (let i = 0; i < numNodes; i++) {
+        const start = offsets[i];
+        const end = offsets[i + 1];
+        const outBase = i * outFeatureDim;
+        for (let h = 0; h < layer.heads; h++) {
+          let maxE = -Infinity;
+          for (let p = start; p < end; p++) {
+            const v = eLogits[edgeIds[p] * layer.heads + h];
+            if (v > maxE) maxE = v;
+          }
+          let sum = 0;
+          for (let p = start; p < end; p++) {
+            const a = Math.exp(eLogits[edgeIds[p] * layer.heads + h] - maxE);
+            tempAlpha[p] = a;
+            sum += a;
+          }
+          const invSum = sum > 0 ? 1 / sum : 0;
+          for (let p = start; p < end; p++) {
+            alphas[edgeIds[p] * layer.heads + h] = tempAlpha[p] * invSum;
+          }
+          for (let o = 0; o < layer.outDim; o++) {
+            const rowId = h * layer.outDim + o;
+            let acc = 0;
+            for (let p = start; p < end; p++) {
+              const dst = neighbors[p];
+              acc += tempAlpha[p] * invSum * hPrime[dst * outTotal + rowId];
+            }
+            if (layer.concat) {
+              output[outBase + rowId] = acc;
+            } else {
+              output[outBase + o] += acc / layer.heads;
+            }
+          }
+        }
+      }
+      features = output;
+      featureDim = outFeatureDim;
+      attentionWeights = alphas;
+    }
+    return {
+      predictions: features,
+      attentionWeights,
+      timestamp
+    };
+  }
+  /**
+   * 从 JSON 加载权重。
+   */
+  static fromJSON(json) {
+    return new _GATModel(normalizeGATWeights(json));
+  }
+};
+
+// src/lib/simulation/gnnWeights.ts
+var DEFAULT_SEED = 20250706;
+var SEED_STRIDE = 1013;
+var ATTENTION_BOUND = 0.1;
+function createLCG(seed) {
+  let value = seed >>> 0;
+  return () => {
+    value = value * 1664525 + 1013904223 >>> 0;
+    return value / 4294967296;
+  };
+}
+function xavierBound(fanIn, fanOut) {
+  return Math.sqrt(6 / (fanIn + fanOut));
+}
+function generateLayerWeights(inDim, outDim, heads, concat, seed) {
+  const rand = createLCG(seed);
+  const rows = outDim * heads;
+  const total = rows * inDim;
+  const W = new Float32Array(total);
+  const bound = xavierBound(inDim, outDim * heads);
+  for (let i = 0; i < total; i++) W[i] = (rand() * 2 - 1) * bound;
+  const a_src = new Float32Array(rows);
+  const a_dst = new Float32Array(rows);
+  for (let i = 0; i < rows; i++) {
+    a_src[i] = (rand() * 2 - 1) * ATTENTION_BOUND;
+    a_dst[i] = (rand() * 2 - 1) * ATTENTION_BOUND;
+  }
+  const bias = new Float32Array(rows);
+  return { W, a_src, a_dst, bias, inDim, outDim, heads, concat };
+}
+function getDefaultGATWeights() {
+  const layer0 = generateLayerWeights(24, 16, 4, true, DEFAULT_SEED);
+  const layer1 = generateLayerWeights(64, 3, 1, false, DEFAULT_SEED + SEED_STRIDE);
+  return { layers: [layer0, layer1] };
+}
+function getDefaultGATModel() {
+  return new GATModel(getDefaultGATWeights());
+}
 
 // src/lib/simulation/engine.ts
 function clamp2(v, min, max) {
@@ -1105,6 +1334,13 @@ var ABMEngine = class {
   spatialHash = new SpatialHash(50);
   statsTimer = 0;
   initialCD8Count = 0;
+  // === 可选 GNN 推理状态（默认关闭，不影响现有行为） ===
+  gatModel = null;
+  lastGNNStep = 0;
+  gnnInterval = 5;
+  // 每 5 步调用一次 GNN
+  cachedPredictions = /* @__PURE__ */ new Map();
+  gnnEnabled = false;
   constructor(width, height, carDesign, simParams, callbacks) {
     this.bounds = { width, height };
     this.carDesign = carDesign;
@@ -1192,6 +1428,8 @@ var ABMEngine = class {
       totalKills: []
     };
     this.field = new CytokineField(this.bounds.width, this.bounds.height, 40, this.simParams, this.random);
+    this.lastGNNStep = 0;
+    this.cachedPredictions.clear();
     this.initializeCells();
     this.callbacks.onStatsUpdate(this.statistics);
   }
@@ -1204,32 +1442,44 @@ var ABMEngine = class {
   setSpeed(speed) {
     this.speed = speed;
   }
+  /**
+   * 启用可选 GNN 推理模式。
+   * @param model 可选：显式传入的 GAT 模型；缺省使用确定性默认权重（seed 固定）。
+   */
+  initGNN(model2) {
+    this.gatModel = model2 ?? getDefaultGATModel();
+    this.gnnEnabled = true;
+    this.lastGNNStep = 0;
+    this.cachedPredictions.clear();
+  }
   step() {
     if (this.isRunning) this.pause();
     const dt = 0.1 * this.speed;
     this.simTime += dt;
+    this.field.update(this.cells, dt);
     this.spatialHash.clear();
     for (const cell of this.cells) {
       if (cell.alive) this.spatialHash.insert(cell);
     }
     const getNeighbors = (x, y, r) => this.spatialHash.query(x, y, r);
-    this.field.update(this.cells, dt);
+    this.runGNNInference();
     for (const cell of this.cells) {
       if (cell.alive) {
         const env = this.field.getAt(cell.position.x, cell.position.y);
-        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors);
+        const gnnPred = this.cachedPredictions.get(cell.id);
+        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors, gnnPred);
       }
     }
     this.handleCD8Expansion();
-    this.handleProliferation();
+    this.handleProliferation(dt);
     this.cells = this.cells.filter((c) => c.alive);
+    this.advanceKillEvents(dt);
     this.statsTimer += dt;
     if (this.statsTimer >= 0.5) {
       this.statsTimer = 0;
       this.collectStats();
     }
     this.stepCount++;
-    this.callbacks.onStatsUpdate({ ...this.statistics });
   }
   loop = (currentTime) => {
     if (!this.isRunning) return;
@@ -1243,15 +1493,18 @@ var ABMEngine = class {
       if (cell.alive) this.spatialHash.insert(cell);
     }
     const getNeighbors = (x, y, r) => this.spatialHash.query(x, y, r);
+    this.runGNNInference();
     for (const cell of this.cells) {
       if (cell.alive) {
         const env = this.field.getAt(cell.position.x, cell.position.y);
-        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors);
+        const gnnPred = this.cachedPredictions.get(cell.id);
+        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors, gnnPred);
       }
     }
     this.handleCD8Expansion();
-    this.handleProliferation();
+    this.handleProliferation(dt);
     this.cells = this.cells.filter((c) => c.alive);
+    this.advanceKillEvents(dt);
     this.statsTimer += dt;
     if (this.statsTimer >= 0.5) {
       this.statsTimer = 0;
@@ -1262,7 +1515,7 @@ var ABMEngine = class {
   };
   handleCD8Expansion() {
     const cd8Cells = this.cells.filter((c) => c.type === "CD8_T_CELL" && c.alive);
-    const currentCD8Count = cd8Cells.length;
+    let currentCD8Count = cd8Cells.length;
     const maxCD8Count = this.initialCD8Count * 3;
     for (const cd8 of cd8Cells) {
       if (cd8.readyToSpawn && currentCD8Count < maxCD8Count) {
@@ -1274,13 +1527,25 @@ var ABMEngine = class {
           const child = new CD8TCell({ x: newX, y: newY }, this.random);
           child.activationLevel = cd8.activationLevel;
           this.cells.push(child);
+          currentCD8Count++;
         }
         cd8.readyToSpawn = false;
         cd8.expansionCount++;
       }
     }
   }
-  handleProliferation() {
+  /**
+   * Advance kill-event ring animations on the simulation clock. Previously
+   * this happened in render() per frame, which let animations decay while
+   * the simulation was paused (the display loop always renders).
+   */
+  advanceKillEvents(dt) {
+    for (let i = killEvents.length - 1; i >= 0; i--) {
+      killEvents[i].time -= dt;
+      if (killEvents[i].time <= 0) killEvents.splice(i, 1);
+    }
+  }
+  handleProliferation(dt) {
     const maxTumorCount = this.simParams.tumorCount * 3;
     const tumorCells = this.cells.filter((c) => c.type === "TUMOR_CELL" && c.alive);
     const currentTumorCount = tumorCells.length;
@@ -1289,7 +1554,7 @@ var ABMEngine = class {
       const env = this.field.getAt(tumor.position.x, tumor.position.y);
       const oxygenFactor = env.oxygen > 0.3 ? 1 : env.oxygen > 0.1 ? 0.3 : 0;
       const viabilityFactor = tumor.viability;
-      const prob = 3e-3 * oxygenFactor * viabilityFactor;
+      const prob = probPerUpdate(3e-3 * oxygenFactor * viabilityFactor, dt);
       if (this.random() < prob) {
         const angle = this.random() * Math.PI * 2;
         const offset = tumor.radius * 2.5;
@@ -1306,6 +1571,108 @@ var ABMEngine = class {
         }
       }
     }
+  }
+  /**
+   * 遍历所有活细胞，构建 24 维节点特征矩阵与空间邻近边。
+   * 节点特征：one-hot 类型(4) + position(2) + 极化/能量(3) + 抗原(3) + 检查点(2) + 场环境(10)。
+   * 边：每个巨噬细胞 (CAR-M=100, WT=150) 用 SpatialHash 查询邻居，并附加自环
+   * （self-loop，标准 GAT 做法），保证感知范围内无邻居的孤立巨噬细胞仍能聚合自身特征，
+   * 否则其输出会退化为全零。边特征 = 1/距离（自环为 1）；注意当前 GATModel.forward
+   * 并不消费 edgeFeatures，保留该数组仅供可视化/未来扩展，避免误导读者。
+   */
+  buildCellGraph() {
+    const aliveCells = this.cells.filter((c) => c.alive);
+    const numNodes = aliveCells.length;
+    const featureDim = 24;
+    const nodeFeatures = new Float32Array(numNodes * featureDim);
+    const nodeIndex = /* @__PURE__ */ new Map();
+    for (let i = 0; i < numNodes; i++) nodeIndex.set(aliveCells[i].id, i);
+    for (let i = 0; i < numNodes; i++) {
+      const cell = aliveCells[i];
+      const base = i * featureDim;
+      const isMacro = cell.type === "CAR_MACROPHAGE" || cell.type === "WILD_TYPE_MACROPHAGE";
+      const isTumor = cell.type === "TUMOR_CELL";
+      nodeFeatures[base + 0] = cell.type === "CAR_MACROPHAGE" ? 1 : 0;
+      nodeFeatures[base + 1] = cell.type === "WILD_TYPE_MACROPHAGE" ? 1 : 0;
+      nodeFeatures[base + 2] = cell.type === "TUMOR_CELL" ? 1 : 0;
+      nodeFeatures[base + 3] = cell.type === "CD8_T_CELL" ? 1 : 0;
+      nodeFeatures[base + 4] = this.bounds.width > 0 ? cell.position.x / this.bounds.width : 0;
+      nodeFeatures[base + 5] = this.bounds.height > 0 ? cell.position.y / this.bounds.height : 0;
+      nodeFeatures[base + 6] = isMacro ? cell.m1Score : 0;
+      nodeFeatures[base + 7] = isMacro ? cell.m2Score : 0;
+      nodeFeatures[base + 8] = isMacro ? cell.energy : 0;
+      nodeFeatures[base + 9] = isTumor ? cell.her2Expression : 0;
+      nodeFeatures[base + 10] = isTumor ? cell.cd19Expression : 0;
+      nodeFeatures[base + 11] = isTumor ? cell.egfrExpression : 0;
+      nodeFeatures[base + 12] = isTumor ? cell.cd47Expression : 0;
+      nodeFeatures[base + 13] = isTumor ? cell.cd24Expression : 0;
+      const env = this.field.getAt(cell.position.x, cell.position.y);
+      nodeFeatures[base + 14] = env.oxygen;
+      nodeFeatures[base + 15] = env.lactate;
+      nodeFeatures[base + 16] = env.tgfBeta;
+      nodeFeatures[base + 17] = env.ifnGamma;
+      nodeFeatures[base + 18] = env.il4;
+      nodeFeatures[base + 19] = env.il10;
+      nodeFeatures[base + 20] = env.vegf;
+      nodeFeatures[base + 21] = env.cxcl9;
+      nodeFeatures[base + 22] = env.spp1;
+      nodeFeatures[base + 23] = env.ecmDensity;
+    }
+    const rowArr = [];
+    const colArr = [];
+    const edgeFeatArr = [];
+    for (let i = 0; i < numNodes; i++) {
+      const cell = aliveCells[i];
+      if (cell.type !== "CAR_MACROPHAGE" && cell.type !== "WILD_TYPE_MACROPHAGE") continue;
+      rowArr.push(i);
+      colArr.push(i);
+      edgeFeatArr.push(1);
+      const perceptionRadius = cell.type === "CAR_MACROPHAGE" ? 100 : 150;
+      const neighbors = this.spatialHash.query(cell.position.x, cell.position.y, perceptionRadius);
+      for (const nb of neighbors) {
+        if (nb === cell || !nb.alive) continue;
+        const j = nodeIndex.get(nb.id);
+        if (j === void 0) continue;
+        const dx = cell.position.x - nb.position.x;
+        const dy = cell.position.y - nb.position.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d <= 0 || d > perceptionRadius) continue;
+        rowArr.push(i);
+        colArr.push(j);
+        edgeFeatArr.push(1 / d);
+      }
+    }
+    const numEdges = rowArr.length;
+    return {
+      nodeFeatures,
+      edgeIndex: { row: new Int32Array(rowArr), col: new Int32Array(colArr) },
+      edgeFeatures: new Float32Array(edgeFeatArr),
+      numNodes,
+      numEdges,
+      featureDim
+    };
+  }
+  /**
+   * 每 gnnInterval 步运行一次 GNN 推理，缓存 per-node 巨噬细胞预测。
+   * 仅当 initGNN() 已启用时生效；否则与原有行为完全一致。
+   */
+  runGNNInference() {
+    if (!this.gatModel || !this.gnnEnabled) return;
+    if (this.stepCount - this.lastGNNStep < this.gnnInterval) return;
+    const graph = this.buildCellGraph();
+    const predictions = this.gatModel.forward(graph);
+    const outputDim = 3;
+    const aliveCells = this.cells.filter((c) => c.alive);
+    const next = /* @__PURE__ */ new Map();
+    for (let i = 0; i < graph.numNodes; i++) {
+      next.set(aliveCells[i].id, {
+        m1: predictions.predictions[i * outputDim + 0],
+        m2: predictions.predictions[i * outputDim + 1],
+        phago: predictions.predictions[i * outputDim + 2]
+      });
+    }
+    this.cachedPredictions = next;
+    this.lastGNNStep = this.stepCount;
   }
   collectStats() {
     const carMs = this.cells.filter((c) => c.type === "CAR_MACROPHAGE" && c.alive);
@@ -1346,18 +1713,24 @@ var ABMEngine = class {
     const headers = ["time", "tumorCount", "carMCount", "m1Ratio", "m2Ratio", "cd8Infiltration", "phagocytosisRate", "ecmAverage", "tCellExhaustion", "totalKills"];
     const rows = [headers.join(",")];
     for (let i = 0; i < this.statistics.time.length; i++) {
+      const m1 = this.statistics.m1Ratio[i];
+      const m2 = this.statistics.m2Ratio[i];
       rows.push([
         this.statistics.time[i]?.toFixed(2),
         this.statistics.tumorCount[i],
         this.statistics.carMCount[i],
-        (this.statistics.m1Ratio[i] * 100)?.toFixed(1),
-        (this.statistics.m2Ratio[i] * 100)?.toFixed(1),
+        m1 === void 0 ? "" : (m1 * 100).toFixed(1),
+        m2 === void 0 ? "" : (m2 * 100).toFixed(1),
         this.statistics.cd8Infiltration[i]?.toFixed(3),
         this.statistics.phagocytosisRate[i],
         this.statistics.ecmAverage?.[i]?.toFixed(3) ?? "",
         this.statistics.tCellExhaustion?.[i]?.toFixed(3) ?? "",
         this.statistics.totalKills?.[i] ?? ""
       ].join(","));
+    }
+    if (this.gnnEnabled) {
+      rows.push("");
+      rows.push(`# GNN enabled: interval=${this.gnnInterval}, lastStep=${this.lastGNNStep}, cachedNodes=${this.cachedPredictions.size}`);
     }
     return rows.join("\n");
   }
@@ -1373,7 +1746,13 @@ var ABMEngine = class {
         cd8: this.cells.filter((c) => c.type === "CD8_T_CELL" && c.alive).length,
         wildType: this.cells.filter((c) => c.type === "WILD_TYPE_MACROPHAGE" && c.alive).length
       },
-      statistics: this.statistics
+      statistics: this.statistics,
+      gnn: this.gnnEnabled ? {
+        enabled: true,
+        interval: this.gnnInterval,
+        lastStep: this.lastGNNStep,
+        cachedPredictions: this.cachedPredictions.size
+      } : { enabled: false }
     };
   }
   render(ctx, showField = false, showECM = false) {
@@ -1418,14 +1797,7 @@ var ABMEngine = class {
     for (const cell of sortedCells) {
       cell.render(ctx);
     }
-    const events = killEvents;
-    for (let i = events.length - 1; i >= 0; i--) {
-      const evt = events[i];
-      evt.time -= 0.016;
-      if (evt.time <= 0) {
-        events.splice(i, 1);
-        continue;
-      }
+    for (const evt of killEvents) {
       const progress = 1 - evt.time / 0.5;
       const radius = 5 + progress * 20;
       const opacity = (1 - progress) * 0.8;

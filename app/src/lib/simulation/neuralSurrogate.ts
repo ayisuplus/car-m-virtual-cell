@@ -5,7 +5,11 @@
  * for predicting M1/M2 polarization and phagocytosis probability.
  *
  * Architecture: 6 → 32 → 32 → 3 (ReLU hidden, Sigmoid output)
- * Trained on 30,000 synthetic samples from a biologically-motivated ODE model
+ * Trained on 30,000 synthetic samples from a closed-form, biologically-motivated
+ * polarization generator (a sigmoid steady-state map over IFN-γ/IL-4/IL-10/TGF-β;
+ * it does NOT use the oxygen/lactate inputs). This is NOT the Hill-type ODE used
+ * as the timing baseline in scripts/benchmark-surrogate.mjs — the accuracy claim
+ * is measured against the training generator only.
  * Held-out validation: 99.98% phenotype-label agreement (MAE ≤ 0.001, R² ≈ 1)
  * Training is reproducible: node scripts/train-surrogate.mjs (seed 20250706)
  * Consistency test:        node scripts/test-surrogate.mjs

@@ -10,6 +10,7 @@
     "test": "npm run test:surrogate && npm run test:unit",
     "test:surrogate": "node ../scripts/test-surrogate.mjs",
     "test:unit": "vitest run",
+    "build:trajectories": "esbuild ../scripts/run-trajectories-entry.ts --bundle --platform=node --format=cjs --alias:@=./src --outfile=../scripts/run-trajectories-bundle.cjs",
     "preview": "vite preview"
   },
   "dependencies": {

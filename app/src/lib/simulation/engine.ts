@@ -229,6 +229,12 @@ export class ABMEngine {
     const dt = 0.1 * this.speed; // fixed timestep for stepping
     this.simTime += dt;
 
+    // Execution order is identical to loop(): field → spatial hash → GNN →
+    // cells → expansion/proliferation → removal → stats. Keeping the two
+    // paths aligned preserves the same-seed reproducibility contract no
+    // matter which path advanced the simulation.
+    this.field.update(this.cells, dt);
+
     this.spatialHash.clear();
     for (const cell of this.cells) {
       if (cell.alive) this.spatialHash.insert(cell);
@@ -238,7 +244,6 @@ export class ABMEngine {
     // 可选 GNN 推理（每 gnnInterval 步执行一次），随后将 per-cell 预测传入 cell.update
     this.runGNNInference();
 
-    this.field.update(this.cells, dt);
     for (const cell of this.cells) {
       if (cell.alive) {
         const env = this.field.getAt(cell.position.x, cell.position.y);
@@ -250,13 +255,13 @@ export class ABMEngine {
     this.handleCD8Expansion();
     this.handleProliferation(dt);
     this.cells = this.cells.filter(c => c.alive);
+    this.advanceKillEvents(dt);
     this.statsTimer += dt;
     if (this.statsTimer >= 0.5) {
       this.statsTimer = 0;
-      this.collectStats();
+      this.collectStats(); // collectStats() is the single onStatsUpdate emitter
     }
     this.stepCount++;
-    this.callbacks.onStatsUpdate({ ...this.statistics });
   }
 
   private loop = (currentTime: number): void => {
@@ -300,6 +305,10 @@ export class ABMEngine {
     // Remove dead cells
     this.cells = this.cells.filter(c => c.alive);
 
+    // Advance kill-event animations on the simulation clock (not per render
+    // frame) so they do not decay while the simulation is paused.
+    this.advanceKillEvents(dt);
+
     // Collect statistics every ~0.5 simulated minutes
     this.statsTimer += dt;
     if (this.statsTimer >= 0.5) {
@@ -313,7 +322,9 @@ export class ABMEngine {
 
   private handleCD8Expansion(): void {
     const cd8Cells = this.cells.filter(c => c.type === 'CD8_T_CELL' && c.alive) as CD8TCell[];
-    const currentCD8Count = cd8Cells.length;
+    // Mutable counter: incremented per spawn so the 3x cap cannot be exceeded
+    // within a single step when several cells are ready to spawn at once.
+    let currentCD8Count = cd8Cells.length;
     const maxCD8Count = this.initialCD8Count * 3;
 
     for (const cd8 of cd8Cells) {
@@ -326,10 +337,23 @@ export class ABMEngine {
           const child = new CD8TCell({ x: newX, y: newY }, this.random);
           child.activationLevel = cd8.activationLevel;
           this.cells.push(child);
+          currentCD8Count++;
         }
         cd8.readyToSpawn = false;
         cd8.expansionCount++;
       }
+    }
+  }
+
+  /**
+   * Advance kill-event ring animations on the simulation clock. Previously
+   * this happened in render() per frame, which let animations decay while
+   * the simulation was paused (the display loop always renders).
+   */
+  private advanceKillEvents(dt: number): void {
+    for (let i = killEvents.length - 1; i >= 0; i--) {
+      killEvents[i].time -= dt;
+      if (killEvents[i].time <= 0) killEvents.splice(i, 1);
     }
   }
 
@@ -372,7 +396,10 @@ export class ABMEngine {
   /**
    * 遍历所有活细胞，构建 24 维节点特征矩阵与空间邻近边。
    * 节点特征：one-hot 类型(4) + position(2) + 极化/能量(3) + 抗原(3) + 检查点(2) + 场环境(10)。
-   * 边：每个巨噬细胞 (CAR-M=100, WT=150) 用 SpatialHash 查询邻居，边特征 = 1/距离。
+   * 边：每个巨噬细胞 (CAR-M=100, WT=150) 用 SpatialHash 查询邻居，并附加自环
+   * （self-loop，标准 GAT 做法），保证感知范围内无邻居的孤立巨噬细胞仍能聚合自身特征，
+   * 否则其输出会退化为全零。边特征 = 1/距离（自环为 1）；注意当前 GATModel.forward
+   * 并不消费 edgeFeatures，保留该数组仅供可视化/未来扩展，避免误导读者。
    */
   private buildCellGraph(): CellGraph {
     const aliveCells = this.cells.filter(c => c.alive);
@@ -429,6 +456,10 @@ export class ABMEngine {
     for (let i = 0; i < numNodes; i++) {
       const cell = aliveCells[i];
       if (cell.type !== 'CAR_MACROPHAGE' && cell.type !== 'WILD_TYPE_MACROPHAGE') continue;
+      // Self-loop: isolated macrophages still aggregate their own features.
+      rowArr.push(i);
+      colArr.push(i);
+      edgeFeatArr.push(1);
       const perceptionRadius = cell.type === 'CAR_MACROPHAGE' ? 100 : 150;
       const neighbors = this.spatialHash.query(cell.position.x, cell.position.y, perceptionRadius);
       for (const nb of neighbors) {
@@ -468,16 +499,18 @@ export class ABMEngine {
     const predictions = this.gatModel.forward(graph);
     const outputDim = 3;
 
-    // 将 per-node 预测缓存到 map（节点索引 → 细胞 ID）
+    // 将 per-node 预测缓存到 map（节点索引 → 细胞 ID）。
+    // 整体替换 Map 以同时清除已死亡细胞的陈旧条目，防止内存随运行时长增长。
     const aliveCells = this.cells.filter(c => c.alive);
+    const next = new Map<string, GNNMacrophagePrediction>();
     for (let i = 0; i < graph.numNodes; i++) {
-      const cellId = aliveCells[i].id;
-      this.cachedPredictions.set(cellId, {
+      next.set(aliveCells[i].id, {
         m1: predictions.predictions[i * outputDim + 0],
         m2: predictions.predictions[i * outputDim + 1],
         phago: predictions.predictions[i * outputDim + 2],
       });
     }
+    this.cachedPredictions = next;
     this.lastGNNStep = this.stepCount;
   }
 
@@ -508,6 +541,10 @@ export class ABMEngine {
 
     const totalKills = cd8s.reduce((s, c) => s + c.killCount, 0);
 
+    // NOTE: phagocytosisRate is a *cumulative count* of phagocytosis events
+    // credited to currently-living macrophages, not a per-time rate. It is
+    // monotonic only because macrophages currently never die; if macrophage
+    // death is ever added, this series can decrease and must be reworked.
     this.statistics.time.push(this.simTime);
     this.statistics.tumorVolume.push(tumors.length);
     this.statistics.phagocytosisRate.push(totalPhago);
@@ -536,12 +573,16 @@ export class ABMEngine {
     const headers = ['time', 'tumorCount', 'carMCount', 'm1Ratio', 'm2Ratio', 'cd8Infiltration', 'phagocytosisRate', 'ecmAverage', 'tCellExhaustion', 'totalKills'];
     const rows: string[] = [headers.join(',')];
     for (let i = 0; i < this.statistics.time.length; i++) {
+      // NOTE: `(arr[i] * 100)?.toFixed(1)` would NOT guard undefined — the
+      // multiplication yields NaN (not nullish), printing "NaN". Guard first.
+      const m1 = this.statistics.m1Ratio[i];
+      const m2 = this.statistics.m2Ratio[i];
       rows.push([
         this.statistics.time[i]?.toFixed(2),
         this.statistics.tumorCount[i],
         this.statistics.carMCount[i],
-        (this.statistics.m1Ratio[i] * 100)?.toFixed(1),
-        (this.statistics.m2Ratio[i] * 100)?.toFixed(1),
+        m1 === undefined ? '' : (m1 * 100).toFixed(1),
+        m2 === undefined ? '' : (m2 * 100).toFixed(1),
         this.statistics.cd8Infiltration[i]?.toFixed(3),
         this.statistics.phagocytosisRate[i],
         this.statistics.ecmAverage?.[i]?.toFixed(3) ?? '',
@@ -631,15 +672,9 @@ export class ABMEngine {
       cell.render(ctx);
     }
 
-    // Render kill events (expanding ring animation)
-    const events = killEvents;
-    for (let i = events.length - 1; i >= 0; i--) {
-      const evt = events[i];
-      evt.time -= 0.016; // ~60fps
-      if (evt.time <= 0) {
-        events.splice(i, 1);
-        continue;
-      }
+    // Render kill events (expanding ring animation). Event timers advance in
+    // advanceKillEvents() on the sim clock; render() only draws current state.
+    for (const evt of killEvents) {
       const progress = 1 - evt.time / 0.5;
       const radius = 5 + progress * 20;
       const opacity = (1 - progress) * 0.8;

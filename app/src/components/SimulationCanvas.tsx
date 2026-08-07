@@ -77,7 +77,10 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.carDesign, state.simParams]);
 
-  // Handle start/pause; design/params are updated via the dedicated effect below
+  // Handle start/pause. NOTE: design/params changes intentionally recreate the
+  // engine (see the init effect above) because initial cell counts, seed, and
+  // field baselines only take effect at construction — live-patching them would
+  // silently break the seeded reproducibility contract.
   useEffect(() => {
     const engine = engineRef.current;
     if (!engine) return;
@@ -91,14 +94,6 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
       engine.pause();
     }
   }, [state.simulation.isRunning, state.simulation.speed, state.carDesign, state.simParams]);
-
-  // Update params without reinit
-  useEffect(() => {
-    const engine = engineRef.current;
-    if (!engine) return;
-    engine.updateCarDesign(state.carDesign);
-    engine.updateParams(state.simParams);
-  }, [state.carDesign, state.simParams]);
 
   // Render loop for display
   useEffect(() => {

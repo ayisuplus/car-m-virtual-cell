@@ -177,7 +177,16 @@ export abstract class Cell {
     };
 
     const gradient = vecAdd(vecScale(gradIfn, m1Score), vecScale(gradTgf, m2Score));
-    this.velocity = vecAdd(this.velocity, vecScale(vecNormalize(gradient), 0.3));
+    // Scale the chemotactic force by gradient magnitude: previously the
+    // gradient was normalized unconditionally, which amplified arbitrarily
+    // small (noise-level) gradients into a full-strength 0.3 force. A typical
+    // strong gradient is ~0.01 (field range 0-1 over ~2h = 80 units), so we
+    // ramp linearly to full strength at that scale and cap there.
+    const mag = Math.sqrt(gradient.x ** 2 + gradient.y ** 2);
+    if (mag > 1e-6) {
+      const strength = 0.3 * Math.min(1, mag / 0.01);
+      this.velocity = vecAdd(this.velocity, vecScale(vecNormalize(gradient), strength));
+    }
   }
 
   protected chemotaxisAway(from: Vector2D, strength: number) {

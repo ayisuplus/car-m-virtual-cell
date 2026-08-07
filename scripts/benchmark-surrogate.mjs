@@ -1,12 +1,20 @@
 /**
- * Honest micro-benchmark: neural surrogate inference vs. an equivalent
+ * Honest micro-benchmark: neural surrogate inference vs. a REPRESENTATIVE
  * biologically-motivated ODE polarization solver.
  *
  * The surrogate inference code is copied VERBATIM from
  * app/src/lib/simulation/neuralSurrogate.ts so that the timing reflects the
- * exact production code path. The ODE baseline solves the same 6-input →
- * M1/M2 polarization problem with an explicit RK4 integrator over a short
+ * exact production code path. The ODE baseline solves a 6-input → M1/M2
+ * polarization problem with an explicit RK4 integrator over a short
  * relaxation horizon, which is the classic approach the surrogate replaces.
+ *
+ * IMPORTANT (wording): this ODE is "representative", not "equivalent". The
+ * surrogate's training ground truth is the closed-form sigmoid generator in
+ * scripts/train-surrogate.mjs — a DIFFERENT function from the Hill-type ODE
+ * below. The 99.98% fidelity claim is measured against the training
+ * generator; this benchmark only quantifies the *timing* cost of a classic
+ * ODE solver of comparable complexity. Do not cite the speedup as the cost
+ * of evaluating the surrogate's own ground truth.
  *
  * Run:  node scripts/benchmark-surrogate.mjs
  */

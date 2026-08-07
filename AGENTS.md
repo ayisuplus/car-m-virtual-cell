@@ -27,8 +27,18 @@ See `app/README.md` "Key Files" for the authoritative routing:
 - `app/_archive/` is a READ-ONLY archive of dead code, old images, and
   superseded assets. Never modify, import from, or "fix" files under it;
   prefer deleting references in live code instead.
+- `archive/paper/` (repo root) is different: it holds the CURRENT manuscript
+  (`CAR-M-Simulator-paper.md`) and the prior peer-review register
+  (`review_simulation.md`). The manuscript is editable — keep every number in
+  it in sync with `paper/figures/data/` and `source_data/`; do not treat it
+  as dead archive.
 - `paper/figures/` outputs (PDF/PNG/SVG/TIFF) are generated artifacts —
   regenerate them via the Python scripts rather than editing them by hand.
+- `scripts/run-trajectories-bundle.cjs` is a build artifact of
+  `scripts/run-trajectories-entry.ts` + `app/src/lib/simulation/`. After
+  touching the simulation library, rebuild it with
+  `cd app && npm run build:trajectories` before regenerating trajectories —
+  a stale bundle silently produces old-engine figures (historical P1 drift).
 - `app/public/models/*.glb` and `assets-poster/` are binary assets; do not
   rewrite them.
 
@@ -48,6 +58,7 @@ Behavior checks (from repo root or via npm scripts):
 
 ```bash
 node scripts/test-surrogate.mjs   # neural surrogate consistency gate (exit non-zero on failure)
+cd app && npm run build:trajectories  # rebuild scripts/run-trajectories-bundle.cjs from current engine
 ```
 
 Python figure/source-data regeneration: see `requirements.txt` and
@@ -63,7 +74,9 @@ simulation paths.
 
 ## Change-validation expectations
 
-- After touching `app/src/lib/simulation/`, run `npm test` in `app/`.
+- After touching `app/src/lib/simulation/`, run `npm test` in `app/`, and
+  rebuild the trajectories bundle (`npm run build:trajectories`) so paper
+  figures cannot drift from the engine.
 - `scripts/test-surrogate.mjs` guards the weight-matrix orientation invariant
   (historical P0 bug); keep it green and in sync with `neuralSurrogate.ts`.
 - CI runs type check → lint → tests → build on every push.

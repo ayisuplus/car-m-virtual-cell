@@ -176,7 +176,11 @@ export default function Dashboard() {
             borderDash: [5, 5],
             label: {
               display: true,
-              content: 'CT-0508 Reference (−20%)',
+              // Illustrative target line only — NOT a CT-0508 trial result.
+              // The Phase 1 report (Reiss et al., Nat Med 2025,
+              // doi:10.1038/s41591-025-03495-z) showed no RECIST objective
+              // responses; 44% (4/9) HER2 3+ patients had stable disease.
+              content: 'Illustrative target (−20%)',
               position: 'end',
               backgroundColor: 'rgba(255, 204, 0, 0.1)',
               color: '#ffcc00',
