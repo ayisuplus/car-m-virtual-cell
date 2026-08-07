@@ -1,347 +1,137 @@
-import { useEffect, useRef, useState, useMemo } from 'react';
-import { ArrowDown, ChevronDown, Microscope, Cpu, Dna, Zap, Activity } from 'lucide-react';
+import { ArrowDownRight, Atom, Braces, Check, FlaskConical, Play, ShieldCheck } from 'lucide-react';
 
-/* ── Animated stat counter (enhanced) ─────────────────────────── */
-interface StatBadgeProps {
-  value: string;
-  label: string;
-  color: string;
-  numeric?: boolean;
-  target?: number;
-  suffix?: string;
-  icon?: React.ReactNode;
-}
+const MODEL_LAYERS = [
+  { label: 'Cell agents', detail: 'CAR-M · Tumor · CD8+', color: '#5eead4' },
+  { label: 'TME fields', detail: '9 coupled factors', color: '#67e8f9' },
+  { label: 'Surrogate', detail: 'Seeded inference', color: '#c4b5fd' },
+];
 
-function StatBadge({ value, label, color, numeric, target, suffix = '', icon }: StatBadgeProps) {
-  const [display, setDisplay] = useState(numeric ? '0' : value);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!numeric || !target) return;
-
-    const el = ref.current;
-    if (!el) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (!entry.isIntersecting) return;
-        observer.disconnect();
-
-        const start = performance.now();
-        const duration = 2000;
-
-        const tick = (now: number) => {
-          const elapsed = now - start;
-          const progress = Math.min(elapsed / duration, 1);
-          // easeOutExpo for more dramatic effect
-          const eased = progress === 1 ? 1 : 1 - Math.pow(2, -10 * progress);
-          const current = Math.round(eased * target);
-          setDisplay(`${current}${suffix}`);
-          if (progress < 1) requestAnimationFrame(tick);
-        };
-
-        requestAnimationFrame(tick);
-      },
-      { threshold: 0.1 }
-    );
-
-    observer.observe(el);
-    return () => observer.disconnect();
-  }, [numeric, target, suffix]);
-
-  return (
-    <div
-      ref={ref}
-      className="group relative flex flex-col items-center px-6 py-4 rounded-xl bg-slate-900/60 border border-slate-700/50 backdrop-blur-sm hover:border-cyan-400/30 transition-all duration-300 hover-lift"
-    >
-      {/* Glow effect on hover */}
-      <div className="absolute inset-0 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity duration-500"
-        style={{ 
-          background: `radial-gradient(circle at center, ${color}10 0%, transparent 70%)`,
-          boxShadow: `0 0 30px ${color}20`
-        }} 
-      />
-      {icon && <div className="mb-2 relative z-10" style={{ color }}>{icon}</div>}
-      <div className="text-2xl font-bold font-mono relative z-10 group-hover:neon-text transition-all duration-300" style={{ color }}>
-        {display}
-      </div>
-      <div className="text-[11px] text-slate-400 uppercase tracking-wider mt-1 relative z-10 font-medium">
-        {label}
-      </div>
-    </div>
-  );
-}
-
-/* ── DNA Helix Background Component ───────────────────────────── */
-function DNAHelix() {
-  const points = useMemo(() => {
-    const pts = [];
-    for (let i = 0; i < 30; i++) {
-      const t = (i / 30) * Math.PI * 4;
-      pts.push({
-        x: 50 + Math.sin(t) * 20,
-        y: (i / 30) * 100,
-        size: 3 + Math.sin(t + Math.PI) * 2,
-        delay: i * 0.1,
-      });
-    }
-    return pts;
-  }, []);
-
-  return (
-    <div className="absolute inset-0 overflow-hidden pointer-events-none opacity-20">
-      <svg className="w-full h-full" viewBox="0 0 100 100" preserveAspectRatio="none">
-        {/* Double helix strands */}
-        <path
-          d={`M ${points.map(p => `${p.x} ${p.y}`).join(' L ')}`}
-          fill="none"
-          stroke="url(#helix-gradient)"
-          strokeWidth="0.3"
-          className="animate-dna"
-        />
-        <path
-          d={`M ${points.map(p => `${100 - p.x} ${p.y}`).join(' L ')}`}
-          fill="none"
-          stroke="url(#helix-gradient)"
-          strokeWidth="0.3"
-          className="animate-dna"
-          style={{ animationDelay: '-10s' }}
-        />
-        {/* Connecting rungs */}
-        {points.filter((_, i) => i % 3 === 0).map((p, i) => (
-          <line
-            key={i}
-            x1={p.x}
-            y1={p.y}
-            x2={100 - p.x}
-            y2={p.y}
-            stroke="rgba(0, 204, 255, 0.15)"
-            strokeWidth="0.2"
-          />
-        ))}
-        <defs>
-          <linearGradient id="helix-gradient" x1="0%" y1="0%" x2="0%" y2="100%">
-            <stop offset="0%" stopColor="#00ccff" stopOpacity="0.6" />
-            <stop offset="50%" stopColor="#cc66ff" stopOpacity="0.4" />
-            <stop offset="100%" stopColor="#00ff88" stopOpacity="0.6" />
-          </linearGradient>
-        </defs>
-      </svg>
-    </div>
-  );
-}
-
-/* ── Enhanced Particles ────────────────────────────────────────── */
-function lcg(seed: number): () => number {
-  let value = seed;
-  return () => {
-    value = (value * 1664525 + 1013904223) % 4294967296;
-    return value / 4294967296;
-  };
-}
-
-const rand = lcg(20250705);
-const particles = Array.from({ length: 35 }, (_, i) => ({
-  id: i,
-  size: 2 + rand() * 6,
-  x: rand() * 100,
-  y: rand() * 100,
-  duration: 15 + rand() * 30,
-  delay: rand() * 15,
-  color: ['#00ff88', '#00ccff', '#cc66ff', '#ff3366', '#ffcc00'][i % 5],
-  type: i % 3 === 0 ? 'orbit' : 'float',
-}));
-
-/* ── Hero Section (Enhanced) ──────────────────────────────────── */
 export default function HeroSection() {
-  const [scrollIndicatorVisible, setScrollIndicatorVisible] = useState(true);
-  const scrollIndicatorRef = useRef<HTMLDivElement>(null);
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
-
-  const scrollToSim = () => {
-    document.getElementById('simulation')?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  // Parallax mouse effect
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      const x = (e.clientX / window.innerWidth - 0.5) * 20;
-      const y = (e.clientY / window.innerHeight - 0.5) * 20;
-      setMousePos({ x, y });
-    };
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
-
-  // Fade out scroll indicator when hero leaves viewport
-  useEffect(() => {
-    const heroEl = document.querySelector('section.hero-section');
-    if (!heroEl) return;
-
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        setScrollIndicatorVisible(entry.isIntersecting && entry.intersectionRatio > 0.15);
-      },
-      { threshold: [0.15, 0] }
-    );
-
-    observer.observe(heroEl);
-    return () => observer.disconnect();
-  }, []);
-
   return (
-    <section className="hero-section relative min-h-screen flex items-center justify-center overflow-hidden">
-      {/* Layer 1: Base hero image with parallax */}
-      <div
-        className="absolute inset-0 bg-cover bg-center opacity-[0.30] transition-transform duration-1000"
-        style={{ 
-          backgroundImage: 'url(/images/hero-bg.jpg)',
-          transform: `translate(${mousePos.x * 0.5}px, ${mousePos.y * 0.5}px) scale(1.1)`
-        }}
-      />
+    <section className="hero-section relative isolate min-h-[calc(100vh-72px)] overflow-hidden border-b border-white/[0.04]">
+      <div className="absolute inset-0 -z-30 bg-[#071019]" />
+      <div className="absolute inset-0 -z-20 bg-[url('/images/hero-bg.jpg')] bg-cover bg-center opacity-[0.17] mix-blend-screen" />
+      <div className="hero-grid absolute inset-0 -z-10 opacity-40" />
+      <div className="absolute -left-40 top-12 -z-10 h-[520px] w-[520px] rounded-full bg-cyan-400/[0.08] blur-[120px]" />
+      <div className="absolute -right-40 bottom-0 -z-10 h-[560px] w-[560px] rounded-full bg-violet-500/[0.08] blur-[130px]" />
 
-      {/* Layer 2: Animated gradient mesh (more vibrant) */}
-      <div className="absolute inset-0 animate-gradient-mesh opacity-70" />
+      <div className="mx-auto grid min-h-[calc(100vh-72px)] max-w-[1500px] items-center gap-16 px-6 py-16 md:px-10 lg:grid-cols-[1.05fr_0.95fr] lg:py-20">
+        <div className="max-w-3xl">
+          <div className="mb-7 inline-flex items-center gap-3 rounded-full border border-emerald-300/20 bg-emerald-300/[0.06] px-3.5 py-2 text-[11px] font-semibold uppercase tracking-[0.18em] text-emerald-200">
+            <span className="relative flex h-2 w-2">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-300 opacity-50" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-300" />
+            </span>
+            Mechanistic virtual-cell platform
+          </div>
 
-      {/* Layer 3: DNA Helix background */}
-      <DNAHelix />
+          <h1 className="max-w-4xl text-[clamp(3.5rem,7vw,7.4rem)] font-semibold leading-[0.88] tracking-[-0.065em] text-white">
+            Design CAR-M.
+            <span className="mt-2 block bg-gradient-to-r from-cyan-200 via-teal-300 to-violet-300 bg-clip-text text-transparent">Explore the TME.</span>
+          </h1>
 
-      {/* Layer 4: Animated grid pattern */}
-      <div className="absolute inset-0 opacity-10"
-        style={{
-          backgroundImage: `
-            linear-gradient(rgba(0, 204, 255, 0.1) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(0, 204, 255, 0.1) 1px, transparent 1px)
-          `,
-          backgroundSize: '50px 50px',
-          animation: 'gradient-mesh 30s linear infinite'
-        }}
-      />
+          <p className="mt-8 max-w-2xl text-base leading-7 text-slate-300/80 md:text-lg md:leading-8">
+            A mechanism-informed research workbench for testing how engineered macrophages behave inside a dynamic tumor microenvironment—before moving hypotheses to the wet lab.
+          </p>
 
-      {/* Layer 5: Dark vignette overlay */}
-      <div className="absolute inset-0 bg-gradient-to-b from-[#0a0f1a]/60 via-[#0a0f1a]/30 to-[#0a0f1a]/90" />
+          <div className="mt-9 flex flex-wrap gap-3">
+            <a href="#simulation" className="hero-primary group">
+              <Play className="h-4 w-4 fill-current" />
+              Launch simulation
+              <ArrowDownRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5 group-hover:translate-y-0.5" />
+            </a>
+            <a href="#science" className="hero-secondary">
+              <FlaskConical className="h-4 w-4" />
+              Review the model
+            </a>
+          </div>
 
-      {/* Layer 6: Radial glow behind content */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] rounded-full opacity-30"
-        style={{
-          background: 'radial-gradient(circle, rgba(0, 204, 255, 0.15) 0%, transparent 70%)',
-          filter: 'blur(60px)'
-        }}
-      />
-
-      {/* Floating particles (enhanced) */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {particles.map(p => (
-          <div
-            key={p.id}
-            className={`absolute rounded-full ${p.type === 'orbit' ? 'animate-orbit' : 'animate-float'}`}
-            style={{
-              width: p.size,
-              height: p.size,
-              left: `${p.x}%`,
-              top: `${p.y}%`,
-              backgroundColor: p.color,
-              animationDuration: `${p.duration}s`,
-              animationDelay: `${p.delay}s`,
-              boxShadow: `0 0 ${p.size * 3}px ${p.color}`,
-              opacity: 0.2 + (rand() * 0.3),
-            }}
-          />
-        ))}
-      </div>
-
-      {/* Content with parallax */}
-      <div 
-        className="relative z-10 text-center px-6 max-w-5xl mx-auto"
-        style={{ transform: `translate(${mousePos.x * -0.3}px, ${mousePos.y * -0.3}px)` }}
-      >
-        {/* Badge with pulse effect */}
-        <div className="inline-flex items-center gap-2 px-5 py-2 rounded-full border border-cyan-400/40 bg-cyan-400/10 mb-8 animate-shimmer">
-          <div className="w-2 h-2 rounded-full bg-cyan-400 pulse-dot" />
-          <span className="text-xs text-cyan-400 font-semibold tracking-widest uppercase">
-            AI Virtual Cell Platform
-          </span>
-          <Zap className="w-3.5 h-3.5 text-cyan-400" />
+          <div className="mt-12 grid max-w-2xl grid-cols-2 gap-x-8 gap-y-6 border-t border-white/[0.08] pt-7 sm:grid-cols-4">
+            <Metric value="4" label="cell populations" />
+            <Metric value="9" label="diffusion fields" />
+            <Metric value="2D / 3D" label="spatial views" />
+            <Metric value="Seeded" label="reproducibility" />
+          </div>
         </div>
 
-        {/* Main title — enhanced with glitch effect */}
-        <h1 className="text-6xl md:text-8xl lg:text-9xl font-black mb-8 leading-[0.9]">
-          <span className="inline-block text-white typewriter-carm glitch-text" data-text="CAR-M">
-            CAR-M
-          </span>
-          <br />
-          <span className="inline-block bg-gradient-to-r from-cyan-400 via-emerald-400 to-purple-400 bg-clip-text text-transparent title-sub fade-in-subtitle bg-[length:200%_auto] animate-[gradient-rotate_6s_linear_infinite]">
-            Simulation Engine
-          </span>
-        </h1>
-
-        {/* Subtitle with typing effect feel */}
-        <p className="text-lg md:text-xl text-slate-300 mb-10 max-w-3xl mx-auto leading-relaxed font-light">
-          A mechanism-informed <span className="text-cyan-400 font-medium">agent-based modeling</span> platform for exploring
-          <br className="hidden md:block" />
-          CAR-engineered macrophage behavior in the{' '}
-          <span className="text-purple-400 font-medium">tumor microenvironment</span>
-        </p>
-
-        {/* Key statistics — enhanced cards */}
-        <div className="flex flex-wrap justify-center gap-4 md:gap-6 mt-10">
-          <StatBadge value="4" label="Cell Types" color="#00ff88" numeric target={4} icon={<Microscope className="w-5 h-5" />} />
-          <StatBadge value="9" label="TME Factors" color="#00ccff" numeric target={9} icon={<Activity className="w-5 h-5" />} />
-          <StatBadge value="≈8×" label="Surrogate Speedup" color="#ffcc00" icon={<Zap className="w-5 h-5" />} />
-          <StatBadge value="100%" label="Seeded Reproducibility" color="#ff3366" icon={<Cpu className="w-5 h-5" />} />
-        </div>
-        <p className="mt-4 text-[11px] text-slate-500 max-w-xl mx-auto">
-          Speedup: surrogate vs RK4 ODE per-call latency, measured by scripts/benchmark-surrogate.mjs
-          (hardware-dependent; ~8× in the paper benchmark). See the Neural Surrogate panel for live
-          micro-benchmarks.
-        </p>
-
-        {/* Feature pills — enhanced */}
-        <div className="flex flex-wrap justify-center gap-4 mt-14 mb-14">
-          {[
-            { icon: <Dna className="w-4 h-4" />, label: 'Multi-scale ABM', color: '#00ff88' },
-            { icon: <Cpu className="w-4 h-4" />, label: 'Neural Surrogate', color: '#00ccff' },
-            { icon: <Microscope className="w-4 h-4" />, label: 'TME Dynamics', color: '#cc66ff' },
-          ].map((pill, i) => (
-            <div 
-              key={i}
-              className="flex items-center gap-2.5 px-5 py-2.5 rounded-xl border backdrop-blur-sm hover-lift cursor-default"
-              style={{ 
-                borderColor: `${pill.color}30`,
-                backgroundColor: `${pill.color}08`,
-                color: pill.color
-              }}
-            >
-              {pill.icon}
-              <span className="text-sm font-medium">{pill.label}</span>
+        <div className="relative mx-auto w-full max-w-[620px] lg:mx-0 lg:justify-self-end">
+          <div className="absolute -inset-12 -z-10 rounded-full bg-cyan-300/[0.06] blur-3xl" />
+          <div className="instrument-panel overflow-hidden rounded-[28px]">
+            <div className="flex items-center justify-between border-b border-white/[0.07] px-5 py-4 md:px-6">
+              <div className="flex items-center gap-3">
+                <span className="grid h-9 w-9 place-items-center rounded-xl bg-cyan-300/10 text-cyan-200"><Atom className="h-4 w-4" /></span>
+                <div>
+                  <p className="text-sm font-semibold text-white">Virtual TME model</p>
+                  <p className="mt-0.5 text-[10px] uppercase tracking-[0.16em] text-slate-500">Experiment 01 · Baseline</p>
+                </div>
+              </div>
+              <span className="flex items-center gap-2 rounded-full bg-emerald-300/[0.08] px-2.5 py-1 text-[10px] font-semibold text-emerald-200">
+                <span className="h-1.5 w-1.5 rounded-full bg-emerald-300" /> Ready
+              </span>
             </div>
-          ))}
+
+            <div className="grid gap-4 p-4 md:grid-cols-[1.2fr_0.8fr] md:p-5">
+              <div className="relative min-h-[330px] overflow-hidden rounded-2xl border border-white/[0.07] bg-[#050b12]">
+                <div className="absolute inset-0 bg-[url('/images/tme-ecosystem.png')] bg-contain bg-center bg-no-repeat opacity-80" />
+                <div className="absolute inset-0 bg-gradient-to-t from-[#050b12] via-transparent to-cyan-200/[0.03]" />
+                <div className="absolute left-4 top-4 flex items-center gap-2 rounded-lg border border-white/[0.07] bg-[#071019]/80 px-3 py-2 text-[10px] text-slate-400 backdrop-blur">
+                  <Braces className="h-3.5 w-3.5 text-cyan-300" /> Agent-based spatial field
+                </div>
+                <div className="absolute inset-x-4 bottom-4 grid grid-cols-3 gap-2">
+                  <MiniReading label="Tumor" value="−18.4%" tone="text-rose-300" />
+                  <MiniReading label="CAR-M" value="+12.7%" tone="text-emerald-300" />
+                  <MiniReading label="Step" value="0240" tone="text-cyan-200" />
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+                  <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.18em] text-slate-500">Model layers</p>
+                  <div className="space-y-4">
+                    {MODEL_LAYERS.map((layer) => (
+                      <div key={layer.label} className="flex items-start gap-3">
+                        <span className="mt-1 h-2 w-2 rounded-full" style={{ backgroundColor: layer.color, boxShadow: `0 0 12px ${layer.color}` }} />
+                        <div>
+                          <p className="text-xs font-medium text-slate-200">{layer.label}</p>
+                          <p className="mt-1 text-[10px] text-slate-500">{layer.detail}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="rounded-2xl border border-white/[0.07] bg-white/[0.025] p-4">
+                  <div className="mb-3 flex items-center justify-between text-[10px] text-slate-500"><span>Run confidence</span><span className="text-slate-300">High</span></div>
+                  <div className="h-1.5 overflow-hidden rounded-full bg-white/[0.06]"><div className="h-full w-[86%] rounded-full bg-gradient-to-r from-cyan-300 to-emerald-300" /></div>
+                  <div className="mt-4 flex items-center gap-2 text-[10px] text-emerald-200"><ShieldCheck className="h-3.5 w-3.5" /> Deterministic seed locked</div>
+                </div>
+
+                <div className="mt-auto flex items-center gap-2 rounded-xl border border-cyan-300/15 bg-cyan-300/[0.05] px-3 py-3 text-[10px] text-cyan-100/80">
+                  <Check className="h-3.5 w-3.5" /> Runs locally in your browser
+                </div>
+              </div>
+            </div>
+          </div>
         </div>
-
-        {/* CTA — enhanced with animated gradient */}
-        <button
-          onClick={scrollToSim}
-          className="group relative inline-flex items-center gap-3 px-10 py-4 rounded-xl bg-gradient-to-r from-cyan-500/20 to-purple-500/20 border border-cyan-400/50 text-cyan-400 hover:from-cyan-500/30 hover:to-purple-500/30 hover:border-cyan-400/70 transition-all duration-500 animate-cta-glow hover:scale-105 magnetic-hover overflow-hidden"
-        >
-          {/* Animated background */}
-          <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-transparent to-purple-500/10 animate-[gradient-rotate_3s_linear_infinite] bg-[length:200%_100%]" />
-          <span className="text-sm font-semibold relative z-10">Launch Simulation</span>
-          <ArrowDown className="w-4 h-4 relative z-10 group-hover:translate-y-1 transition-transform duration-300" />
-        </button>
       </div>
-
-      {/* Scroll-down indicator — enhanced */}
-      <div
-        ref={scrollIndicatorRef}
-        className="absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 transition-opacity duration-500"
-        style={{ opacity: scrollIndicatorVisible ? 1 : 0 }}
-      >
-        <span className="text-[10px] text-cyan-400/60 uppercase tracking-widest">Scroll to explore</span>
-        <ChevronDown className="w-5 h-5 text-cyan-400/50 animate-bounce" />
-      </div>
-
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-[#0a0f1a] to-transparent" />
     </section>
+  );
+}
+
+function Metric({ value, label }: { value: string; label: string }) {
+  return (
+    <div>
+      <div className="text-lg font-semibold tracking-tight text-white">{value}</div>
+      <div className="mt-1 text-[10px] font-medium uppercase tracking-[0.12em] text-slate-500">{label}</div>
+    </div>
+  );
+}
+
+function MiniReading({ label, value, tone }: { label: string; value: string; tone: string }) {
+  return (
+    <div className="rounded-xl border border-white/[0.06] bg-[#071019]/85 px-3 py-2.5 backdrop-blur">
+      <p className="text-[9px] uppercase tracking-wider text-slate-500">{label}</p>
+      <p className={`mt-1 font-mono text-xs font-semibold ${tone}`}>{value}</p>
+    </div>
   );
 }

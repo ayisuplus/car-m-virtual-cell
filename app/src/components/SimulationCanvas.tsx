@@ -70,9 +70,10 @@ export default function SimulationCanvas({ onEngineReady }: SimulationCanvasProp
     return () => {
       onEngineReadyRef.current(null);
       engine.destroy();
-      if (animationFrameRef.current) {
-        cancelAnimationFrame(animationFrameRef.current);
-      }
+      // The display loop has its own effect/lifecycle and always reads the
+      // latest engineRef. Cancelling it here freezes the canvas after a
+      // parameter change because this engine effect is recreated while the
+      // display effect is not.
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [state.carDesign, state.simParams]);

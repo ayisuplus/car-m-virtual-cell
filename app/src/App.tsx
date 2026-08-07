@@ -1,10 +1,10 @@
-import { lazy, Suspense } from 'react';
+import { lazy, Suspense, useEffect, useState } from 'react';
+import { Activity, Menu, X } from 'lucide-react';
 import { SimProvider } from '@/context/SimContext';
 import HeroSection from '@/sections/HeroSection';
 import CellShowcase3D from '@/components/CellShowcase3D';
 import SimSection from '@/sections/SimSection';
 
-// Lazy-loaded non-critical sections (loaded on scroll / interaction)
 const ScienceSection = lazy(() => import('@/sections/ScienceSection'));
 const ClinicalSection = lazy(() => import('@/sections/ClinicalSection'));
 const DataSection = lazy(() => import('@/sections/DataSection'));
@@ -14,27 +14,33 @@ const ReferencesSection = lazy(() => import('@/sections/ReferencesSection'));
 const AssetSection = lazy(() => import('@/sections/AssetSection'));
 const Footer = lazy(() => import('@/sections/Footer'));
 
-/* ── Section Divider Component ──────────────────────────────────── */
+const NAV_ITEMS = [
+  { href: '#simulation', label: 'Simulator' },
+  { href: '#science', label: 'Science' },
+  { href: '#clinical', label: 'Clinical' },
+  { href: '#data', label: 'Data' },
+  { href: '#technology', label: 'Technology' },
+  { href: '#team', label: 'Team' },
+  { href: '#references', label: 'References' },
+];
+
 function SectionDivider() {
   return (
-    <div className="relative py-8">
-      <div className="section-divider max-w-4xl mx-auto" />
-      {/* Center dot */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-cyan-400/30" />
+    <div className="relative mx-auto h-px max-w-7xl px-6" aria-hidden="true">
+      <div className="h-px bg-gradient-to-r from-transparent via-cyan-300/15 to-transparent" />
     </div>
   );
 }
 
-/* ── Loading skeleton for lazy sections ──────────────────────────── */
 function SectionSkeleton() {
   return (
-    <div className="py-20 px-4 md:px-8">
-      <div className="max-w-6xl mx-auto animate-pulse">
-        <div className="h-8 w-48 bg-slate-800/50 rounded-lg mb-4 mx-auto" />
-        <div className="h-4 w-96 bg-slate-800/30 rounded-lg mb-12 mx-auto" />
-        <div className="grid md:grid-cols-2 gap-6">
-          <div className="h-64 bg-slate-800/20 rounded-xl" />
-          <div className="h-64 bg-slate-800/20 rounded-xl" />
+    <div className="px-6 py-24" aria-label="Loading content">
+      <div className="mx-auto max-w-6xl animate-pulse">
+        <div className="mx-auto mb-5 h-3 w-28 rounded-full bg-cyan-300/10" />
+        <div className="mx-auto mb-12 h-10 w-72 rounded-xl bg-slate-800/60" />
+        <div className="grid gap-6 md:grid-cols-2">
+          <div className="h-64 rounded-2xl bg-slate-800/30" />
+          <div className="h-64 rounded-2xl bg-slate-800/30" />
         </div>
       </div>
     </div>
@@ -42,45 +48,69 @@ function SectionSkeleton() {
 }
 
 function App() {
+  const [menuOpen, setMenuOpen] = useState(false);
+
+  useEffect(() => {
+    const closeMenu = () => setMenuOpen(false);
+    window.addEventListener('resize', closeMenu);
+    return () => window.removeEventListener('resize', closeMenu);
+  }, []);
+
   return (
     <SimProvider>
-      <div className="min-h-screen bg-[#0a0f1a] text-slate-200">
-        {/* Navigation — enhanced */}
-        <nav className="fixed top-0 left-0 right-0 z-50 glass-panel border-b border-slate-700/20 rounded-none backdrop-blur-xl">
-          <div className="max-w-[1600px] mx-auto px-4 md:px-8 py-3.5 flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400/20 to-purple-400/20 border border-cyan-400/30 flex items-center justify-center hover:from-cyan-400/30 hover:to-purple-400/30 transition-all duration-300">
-                <span className="text-xs font-bold text-cyan-400">M</span>
-              </div>
-              <div className="hidden sm:block">
-                <span className="text-sm font-bold text-white">CAR-M</span>
-                <span className="text-xs text-slate-400 ml-1.5 font-light">Simulator</span>
-              </div>
+      <div className="min-h-screen overflow-x-hidden bg-[#071019] text-slate-200">
+        <nav className="site-nav fixed inset-x-0 top-0 z-50" aria-label="Primary navigation">
+          <div className="mx-auto flex h-[72px] max-w-[1600px] items-center justify-between px-5 md:px-8">
+            <a href="#top" className="group flex items-center gap-3" aria-label="CAR-M Simulator home">
+              <span className="relative grid h-10 w-10 place-items-center rounded-xl border border-cyan-300/20 bg-cyan-300/[0.07] text-cyan-200 shadow-[inset_0_1px_0_rgba(255,255,255,0.08)]">
+                <Activity className="h-5 w-5" />
+                <span className="absolute -right-0.5 -top-0.5 h-2 w-2 rounded-full border-2 border-[#071019] bg-emerald-300" />
+              </span>
+              <span className="leading-none">
+                <span className="block text-[15px] font-semibold tracking-[-0.01em] text-white">CAR-M</span>
+                <span className="mt-1 block text-[10px] font-medium uppercase tracking-[0.2em] text-slate-500">Virtual Cell Lab</span>
+              </span>
+            </a>
+
+            <div className="hidden items-center gap-0.5 lg:flex">
+              {NAV_ITEMS.map((item) => <NavLink key={item.href} {...item} />)}
             </div>
-            <div className="flex items-center gap-1">
-              <NavLink href="#simulation" label="Sim" />
-              <NavLink href="#science" label="Science" />
-              <NavLink href="#clinical" label="Clinical" />
-              <NavLink href="#data" label="Data" />
-              <NavLink href="#technology" label="Tech" />
-              <NavLink href="#team" label="Team" />
-              <NavLink href="#references" label="Refs" />
-              <NavLink href="#assets" label="Assets" />
+
+            <div className="flex items-center gap-3">
+              <a href="#simulation" className="nav-cta hidden sm:inline-flex">Open workbench</a>
+              <button
+                type="button"
+                onClick={() => setMenuOpen((open) => !open)}
+                className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.04] text-slate-300 lg:hidden"
+                aria-expanded={menuOpen}
+                aria-controls="mobile-navigation"
+                aria-label={menuOpen ? 'Close navigation' : 'Open navigation'}
+              >
+                {menuOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+              </button>
             </div>
           </div>
+
+          {menuOpen && (
+            <div id="mobile-navigation" className="border-t border-white/[0.06] bg-[#071019]/95 px-5 py-4 backdrop-blur-2xl lg:hidden">
+              <div className="mx-auto grid max-w-[1600px] grid-cols-2 gap-2 sm:grid-cols-4">
+                {NAV_ITEMS.map((item) => (
+                  <a key={item.href} href={item.href} onClick={() => setMenuOpen(false)} className="rounded-xl px-4 py-3 text-sm text-slate-300 hover:bg-white/[0.05] hover:text-white">
+                    {item.label}
+                  </a>
+                ))}
+              </div>
+            </div>
+          )}
         </nav>
 
-        {/* Main content */}
-        <main className="pt-14">
-          {/* Critical path — loaded synchronously */}
+        <main id="top" className="pt-[72px]">
           <HeroSection />
           <SectionDivider />
           <CellShowcase3D />
           <SectionDivider />
           <SimSection />
           <SectionDivider />
-
-          {/* Non-critical — lazy loaded on scroll */}
           <Suspense fallback={<SectionSkeleton />}>
             <ScienceSection />
             <SectionDivider />
@@ -105,13 +135,8 @@ function App() {
 
 function NavLink({ href, label }: { href: string; label: string }) {
   return (
-    <a
-      href={href}
-      className="px-3.5 py-2 rounded-lg text-xs text-slate-400 hover:text-cyan-400 hover:bg-cyan-400/5 transition-all duration-300 font-medium relative group"
-    >
+    <a href={href} className="rounded-lg px-3 py-2 text-[12px] font-medium text-slate-400 transition-colors hover:bg-white/[0.04] hover:text-white">
       {label}
-      {/* Hover underline effect */}
-      <span className="absolute bottom-0 left-1/2 -translate-x-1/2 w-0 h-0.5 bg-cyan-400/50 rounded-full group-hover:w-4/5 transition-all duration-300" />
     </a>
   );
 }
