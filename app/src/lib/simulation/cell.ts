@@ -4,6 +4,13 @@ import type { CytokineField } from './field';
 import { neuralSurrogatePredict } from './neuralSurrogate';
 import type { RandomSource } from './engine';
 
+/** GNN 输出的巨噬细胞级预测（可选 GNN 推理模式，由 engine 传入）。 */
+export interface GNNMacrophagePrediction {
+  m1: number;
+  m2: number;
+  phago: number;
+}
+
 // Utility functions
 function vecAdd(a: Vector2D, b: Vector2D): Vector2D {
   return { x: a.x + b.x, y: a.y + b.y };
@@ -110,7 +117,16 @@ export abstract class Cell {
     this.random = random;
   }
 
-  abstract update(dt: number, env: FieldCell, _allCells: Cell[], carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[]): void;
+  abstract update(
+    dt: number,
+    env: FieldCell,
+    _allCells: Cell[],
+    carDesign: CarDesign,
+    bounds: { width: number; height: number },
+    field: CytokineField,
+    getNeighbors: (x: number, y: number, radius: number) => Cell[],
+    gnnPrediction?: GNNMacrophagePrediction
+  ): void;
   abstract render(ctx: CanvasRenderingContext2D): void;
 
   protected applyBounds(bounds: { width: number; height: number }) {
@@ -202,11 +218,11 @@ export class CarMacrophage extends Cell {
     this.debugPhagocytosisProb = 0;
   }
 
-  update(dt: number, env: FieldCell, _allCells: Cell[], carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[]): void {
+  update(dt: number, env: FieldCell, _allCells: Cell[], carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[], gnnPrediction?: GNNMacrophagePrediction): void {
     this.age += dt;
 
     // Polarization dynamics based on cytokine environment
-    this.updatePolarization(env, dt);
+    this.updatePolarization(env, dt, gnnPrediction);
 
     // Energy metabolism
     this.energy = clamp(this.energy - 0.05 * dt, 0, 100);
@@ -292,11 +308,19 @@ export class CarMacrophage extends Cell {
     }
   }
 
-  private updatePolarization(env: FieldCell, dt: number): void {
-    // Neural surrogate predicts steady-state polarization (fast inference)
-    const [nnM1, nnM2] = neuralSurrogatePredict(
-      env.ifnGamma, env.il4, env.il10, env.tgfBeta, env.oxygen, env.lactate
-    );
+  private updatePolarization(env: FieldCell, dt: number, gnnPrediction?: GNNMacrophagePrediction): void {
+    // 优先使用 GNN 预测（可选模式）；否则回退到现有 MLP surrogate
+    let nnM1: number, nnM2: number;
+    if (gnnPrediction) {
+      nnM1 = gnnPrediction.m1;
+      nnM2 = gnnPrediction.m2;
+    } else {
+      const vals = neuralSurrogatePredict(
+        env.ifnGamma, env.il4, env.il10, env.tgfBeta, env.oxygen, env.lactate
+      );
+      nnM1 = vals[0];
+      nnM2 = vals[1];
+    }
     
     // Exponential decay toward NN-predicted steady state
     const tau = 0.15;
@@ -479,11 +503,11 @@ export class WildTypeMacrophage extends Cell {
     this.phagocytosisCount = 0;
   }
 
-  update(dt: number, env: FieldCell, _allCells: Cell[], _carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[]): void {
+  update(dt: number, env: FieldCell, _allCells: Cell[], _carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[], gnnPrediction?: GNNMacrophagePrediction): void {
     this.age += dt;
 
     // Polarization dynamics
-    this.updatePolarization(env, dt);
+    this.updatePolarization(env, dt, gnnPrediction);
 
     // Energy metabolism
     this.energy = clamp(this.energy - 0.05 * dt, 0, 100);
@@ -546,11 +570,19 @@ export class WildTypeMacrophage extends Cell {
     this.applyBounds(bounds);
   }
 
-  private updatePolarization(env: FieldCell, dt: number): void {
-    // Neural surrogate predicts steady-state polarization (fast inference)
-    const [nnM1, nnM2] = neuralSurrogatePredict(
-      env.ifnGamma, env.il4, env.il10, env.tgfBeta, env.oxygen, env.lactate
-    );
+  private updatePolarization(env: FieldCell, dt: number, gnnPrediction?: GNNMacrophagePrediction): void {
+    // 优先使用 GNN 预测（可选模式）；否则回退到现有 MLP surrogate
+    let nnM1: number, nnM2: number;
+    if (gnnPrediction) {
+      nnM1 = gnnPrediction.m1;
+      nnM2 = gnnPrediction.m2;
+    } else {
+      const vals = neuralSurrogatePredict(
+        env.ifnGamma, env.il4, env.il10, env.tgfBeta, env.oxygen, env.lactate
+      );
+      nnM1 = vals[0];
+      nnM2 = vals[1];
+    }
     
     // Exponential decay toward NN-predicted steady state
     const tau = 0.15;
@@ -631,7 +663,7 @@ export class TumorCell extends Cell {
   }
 
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
-  update(dt: number, env: FieldCell, __allCells: Cell[], _carDesign: CarDesign, bounds: { width: number; height: number }, __field: CytokineField, __getNeighbors: (x: number, y: number, radius: number) => Cell[]): void {
+  update(dt: number, env: FieldCell, __allCells: Cell[], _carDesign: CarDesign, bounds: { width: number; height: number }, __field: CytokineField, __getNeighbors: (x: number, y: number, radius: number) => Cell[], _gnnPrediction?: GNNMacrophagePrediction): void {
     this.age += dt;
 
     // Metabolic stress in low oxygen
@@ -737,7 +769,8 @@ export class CD8TCell extends Cell {
     this.readyToSpawn = false;
   }
 
-  update(dt: number, env: FieldCell, _allCells: Cell[], _carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[]): void {
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  update(dt: number, env: FieldCell, _allCells: Cell[], _carDesign: CarDesign, bounds: { width: number; height: number }, field: CytokineField, getNeighbors: (x: number, y: number, radius: number) => Cell[], _gnnPrediction?: GNNMacrophagePrediction): void {
     this.age += dt;
 
     // Exhaustion dynamics: immunosuppressive cytokines increase it, IFN-γ relieves it

@@ -1,0 +1,110 @@
+[
+  {
+    "name": "TCGA-BRCA High-Immune",
+    "description": "高免疫浸润队列（M1 富集、低风险）CAR-M 参考设置",
+    "sim_params": {
+      "carMCount": 14,
+      "tumorCount": 26,
+      "wildTypeCount": 10,
+      "cd8Count": 16,
+      "oxygenLevel": 0.62,
+      "lactateLevel": 0.25,
+      "tgfBetaLevel": 0.28,
+      "randomSeed": 42001
+    },
+    "car_design": {
+      "signalingDomain": "CD3ζ",
+      "targetAntigen": "HER2",
+      "affinity": 8,
+      "checkpointBlockade": {
+        "CD47_SIRPa": true,
+        "CD24_Siglec10": true
+      }
+    },
+    "tcga_source": {
+      "subtype": "high_immune",
+      "sample_count": 70
+    }
+  },
+  {
+    "name": "TCGA-BRCA Low-Immune",
+    "description": "低免疫浸润队列（冷肿瘤、高风险）CAR-M 参考设置",
+    "sim_params": {
+      "carMCount": 10,
+      "tumorCount": 34,
+      "wildTypeCount": 18,
+      "cd8Count": 5,
+      "oxygenLevel": 0.38,
+      "lactateLevel": 0.55,
+      "tgfBetaLevel": 0.72,
+      "randomSeed": 42002
+    },
+    "car_design": {
+      "signalingDomain": "MerTK",
+      "targetAntigen": "HER2",
+      "affinity": 5,
+      "checkpointBlockade": {
+        "CD47_SIRPa": true,
+        "CD24_Siglec10": false
+      }
+    },
+    "tcga_source": {
+      "subtype": "low_immune",
+      "sample_count": 60
+    }
+  },
+  {
+    "name": "TCGA-BRCA Normal-Immune",
+    "description": "正常免疫浸润队列（基线）CAR-M 参考设置",
+    "sim_params": {
+      "carMCount": 12,
+      "tumorCount": 30,
+      "wildTypeCount": 15,
+      "cd8Count": 9,
+      "oxygenLevel": 0.52,
+      "lactateLevel": 0.4,
+      "tgfBetaLevel": 0.45,
+      "randomSeed": 42003
+    },
+    "car_design": {
+      "signalingDomain": "CD3ζ",
+      "targetAntigen": "HER2",
+      "affinity": 6,
+      "checkpointBlockade": {
+        "CD47_SIRPa": true,
+        "CD24_Siglec10": false
+      }
+    },
+    "tcga_source": {
+      "subtype": "normal",
+      "sample_count": 50
+    }
+  },
+  {
+    "name": "TCGA-BRCA Checkpoint-Hot",
+    "description": "免疫检查点高表达队列（PHAGO + Checkpoint 通路）参考设置",
+    "sim_params": {
+      "carMCount": 13,
+      "tumorCount": 28,
+      "wildTypeCount": 12,
+      "cd8Count": 12,
+      "oxygenLevel": 0.58,
+      "lactateLevel": 0.32,
+      "tgfBetaLevel": 0.4,
+      "randomSeed": 42004
+    },
+    "car_design": {
+      "signalingDomain": "FcRγ",
+      "targetAntigen": "HER2",
+      "affinity": 7,
+      "checkpointBlockade": {
+        "CD47_SIRPa": true,
+        "CD24_Siglec10": true
+      }
+    },
+    "tcga_source": {
+      "subtype": "high_immune",
+      "sample_count": 20
+    }
+  }
+]

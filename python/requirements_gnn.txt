@@ -1,0 +1,18 @@
+# GNN 训练额外依赖（python/ 下 TCGA 管线与 GAT 训练）
+# Install:  py -3.11 -m pip install -r python/requirements_gnn.txt
+#
+# 说明：
+# - torch / torch-geometric 为可选依赖；若可用，gnn_train.py 使用纯
+#   PyTorch 手写 GAT（不依赖 PyG 的图算子）；
+# - 若 torch 不可用，脚本自动回退到纯 numpy 手写 GAT（无需这些依赖
+#   也可运行，仅需 numpy/scipy/scikit-learn）。
+#
+# 注意：torch-geometric 需与 torch 版本匹配，建议按官方索引安装：
+#   py -3.11 -m pip install torch --index-url https://download.pytorch.org/whl/cpu
+#   py -3.11 -m pip install torch-geometric
+
+torch>=2.0
+torch-geometric>=2.4  # 如果可用
+numpy>=1.24
+scipy>=1.10
+scikit-learn>=1.2

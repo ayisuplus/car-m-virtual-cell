@@ -1,0 +1,92 @@
+[
+  {
+    "name": "高免疫浸润型",
+    "description": "基于 TCGA-BRCA 高免疫亚型患者，巨噬细胞、CD8 T 细胞浸润丰富，免疫检查点高表达。",
+    "sim_params": {
+      "carMCount": 15,
+      "tumorCount": 20,
+      "cd8Count": 18,
+      "oxygenLevel": 0.6
+    },
+    "car_design": {
+      "targetAntigen": "HER2",
+      "affinity": 7
+    },
+    "tcga_source": {
+      "subtype": "high_immune",
+      "sample_count": 45
+    }
+  },
+  {
+    "name": "低免疫抑制型",
+    "description": "基于 TCGA-BRCA 低免疫亚型患者，免疫细胞浸润稀少，肿瘤微环境偏向免疫抑制。",
+    "sim_params": {
+      "carMCount": 12,
+      "tumorCount": 26,
+      "cd8Count": 6,
+      "oxygenLevel": 0.35
+    },
+    "car_design": {
+      "targetAntigen": "CD47",
+      "affinity": 8
+    },
+    "tcga_source": {
+      "subtype": "low_immune",
+      "sample_count": 42
+    }
+  },
+  {
+    "name": "正常免疫平衡型",
+    "description": "基于 TCGA-BRCA 正常亚型患者，免疫浸润处于中等水平，肿瘤与免疫细胞动态平衡。",
+    "sim_params": {
+      "carMCount": 10,
+      "tumorCount": 18,
+      "cd8Count": 10,
+      "oxygenLevel": 0.5
+    },
+    "car_design": {
+      "targetAntigen": "HER2",
+      "affinity": 5
+    },
+    "tcga_source": {
+      "subtype": "normal",
+      "sample_count": 38
+    }
+  },
+  {
+    "name": "高肿瘤负荷型",
+    "description": "肿瘤体积大、浸润中等，CAR-M 需增强杀伤效能，采用抗吞噬检查点设计。",
+    "sim_params": {
+      "carMCount": 18,
+      "tumorCount": 32,
+      "cd8Count": 12,
+      "oxygenLevel": 0.45
+    },
+    "car_design": {
+      "targetAntigen": "CD47",
+      "affinity": 9
+    },
+    "tcga_source": {
+      "subtype": "high_immune",
+      "sample_count": 30
+    }
+  },
+  {
+    "name": "M2 富集免疫抑制型",
+    "description": "M2 巨噬细胞占优，促肿瘤微环境，CAR-M 需重极化为 M1 表型。",
+    "sim_params": {
+      "carMCount": 14,
+      "tumorCount": 22,
+      "cd8Count": 8,
+      "oxygenLevel": 0.4
+    },
+    "car_design": {
+      "targetAntigen": "MERTK",
+      "affinity": 6
+    },
+    "tcga_source": {
+      "subtype": "low_immune",
+      "sample_count": 25
+    }
+  }
+]

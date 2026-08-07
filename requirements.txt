@@ -12,3 +12,18 @@ numpy>=1.24
 matplotlib>=3.7
 Pillow>=10.0
 python-pptx>=0.6.21
+
+# --- 真实 TCGA 数据下载与预处理（python/ 目录） ---------------------------
+# 供 python/download_tcga.py、tcga_data_pipeline.py 使用。
+pandas>=2.0
+requests>=2.31
+
+# --- GNN / TCGA 管线额外依赖（python/ 目录） ------------------------------
+# 供 python/tcga_data_pipeline.py、graph_construction.py、gnn_train.py、
+# export_frontend.py 使用。torch / torch-geometric 为可选：若可用则 gnn_train.py
+# 使用纯 PyTorch 手写 GAT；否则自动回退到纯 numpy 实现（仅需 numpy/scipy/
+# scikit-learn）。更完整的说明见 python/requirements_gnn.txt。
+torch>=2.0
+torch-geometric>=2.4  # 如果可用
+scipy>=1.10
+scikit-learn>=1.2

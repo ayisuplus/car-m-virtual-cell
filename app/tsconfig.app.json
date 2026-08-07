@@ -30,5 +30,7 @@
     "noFallthroughCasesInSwitch": true,
     "noUncheckedSideEffectImports": true
   },
-  "include": ["src"]
+  "include": ["src"],
+  // 测试文件由 vitest 直接执行（可访问 node 内置模块），不参与应用构建类型检查。
+  "exclude": ["src/**/*.test.ts", "src/**/*.test.tsx"]
 }

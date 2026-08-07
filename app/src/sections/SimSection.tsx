@@ -3,7 +3,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import SimulationCanvas from '@/components/SimulationCanvas';
 import ControlPanel from '@/components/ControlPanel';
 import CellLegend from '@/components/CellLegend';
-import { Sliders, Dna, BarChart3, FlaskConical, GitCompare, Brain } from 'lucide-react';
+import { Sliders, Dna, BarChart3, FlaskConical, GitCompare, Brain, Database } from 'lucide-react';
 import { useSim } from '@/context/SimContext';
 import type { SimParams, CarDesign } from '@/types/simulation';
 import type { ABMEngine } from '@/lib/simulation/engine';
@@ -11,6 +11,7 @@ import type { ABMEngine } from '@/lib/simulation/engine';
 const Simulation3D = lazy(() => import('@/components/Simulation3D'));
 const CarDesigner = lazy(() => import('@/components/CarDesigner'));
 const Dashboard = lazy(() => import('@/components/Dashboard'));
+const TcgaReferencePanel = lazy(() => import('@/components/TcgaReferencePanel'));
 const PresetScenarios = lazy(() => import('@/components/PresetScenarios'));
 const ExperimentComparator = lazy(() => import('@/components/ExperimentComparator'));
 const NeuralSurrogateDemo = lazy(() => import('@/components/NeuralSurrogateDemo'));
@@ -110,7 +111,7 @@ export default function SimSection() {
           {/* Sidebar with tabs */}
           <div className="w-full lg:w-80 xl:w-96 space-y-3">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-              <TabsList aria-label="Simulation workbench" className="grid h-auto w-full grid-cols-3 gap-1 border border-slate-700/60 bg-[#09131d] p-1">
+              <TabsList aria-label="Simulation workbench" className="grid h-auto w-full grid-cols-4 gap-1 border border-slate-700/60 bg-[#09131d] p-1">
                 <TabsTrigger value="control" aria-label="Setup controls" className="min-h-10 px-2 text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300">
                   <Sliders className="w-3.5 h-3.5 mr-0.5" />
                   <span>Setup</span>
@@ -122,6 +123,10 @@ export default function SimSection() {
                 <TabsTrigger value="dashboard" aria-label="Simulation results" className="min-h-10 px-2 text-xs data-[state=active]:bg-cyan-400/15 data-[state=active]:text-cyan-300">
                   <BarChart3 className="w-3.5 h-3.5 mr-0.5" />
                   <span>Results</span>
+                </TabsTrigger>
+                <TabsTrigger value="tcga" aria-label="TCGA reference cohort" className="min-h-10 px-2 text-xs data-[state=active]:bg-fuchsia-400/15 data-[state=active]:text-fuchsia-300">
+                  <Database className="w-3.5 h-3.5 mr-0.5" />
+                  <span>TCGA</span>
                 </TabsTrigger>
                 <TabsTrigger value="scenarios" aria-label="Preset scenarios" className="min-h-10 px-2 text-xs data-[state=active]:bg-amber-400/15 data-[state=active]:text-amber-300">
                   <FlaskConical className="w-3.5 h-3.5 mr-0.5" />
@@ -147,6 +152,10 @@ export default function SimSection() {
 
               <TabsContent value="dashboard" className="mt-3">
                 <Suspense fallback={<PanelFallback />}><Dashboard /></Suspense>
+              </TabsContent>
+
+              <TabsContent value="tcga" className="mt-3">
+                <Suspense fallback={<PanelFallback />}><TcgaReferencePanel /></Suspense>
               </TabsContent>
 
               <TabsContent value="scenarios" className="mt-3">

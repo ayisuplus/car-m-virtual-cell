@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { ABMEngine } from './engine';
+import { getDefaultGATModel } from './gnnWeights';
 import type { CarDesign, SimParams } from '@/types/simulation';
 
 /**
@@ -97,5 +98,26 @@ describe('ABMEngine seeded reproducibility', () => {
       expect(cell.position.y).toBeGreaterThanOrEqual(0);
       expect(cell.position.y).toBeLessThanOrEqual(300);
     }
+  });
+
+  it('GNN mode keeps the same-seed trajectory deterministic', () => {
+    const a = makeEngine(42);
+    const b = makeEngine(42);
+    a.initGNN(getDefaultGATModel());
+    b.initGNN(getDefaultGATModel());
+    for (let i = 0; i < 5; i++) {
+      a.step();
+      b.step();
+    }
+    expect(layout(a)).toBe(layout(b));
+  });
+
+  it('getSnapshot reports GNN enabled state', () => {
+    const engine = makeEngine(42);
+    expect((engine.getSnapshot() as { gnn: { enabled: boolean } }).gnn.enabled).toBe(false);
+    engine.initGNN();
+    const gnn = (engine.getSnapshot() as { gnn: { enabled: boolean; interval: number } }).gnn;
+    expect(gnn.enabled).toBe(true);
+    expect(gnn.interval).toBe(5);
   });
 });

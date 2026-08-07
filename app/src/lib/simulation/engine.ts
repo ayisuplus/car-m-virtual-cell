@@ -1,7 +1,9 @@
 import { CarMacrophage, WildTypeMacrophage, TumorCell, CD8TCell, killEvents, clearKillEvents, probPerUpdate } from './cell';
 import { CytokineField } from './field';
-import type { Cell } from './cell';
-import type { CarDesign, SimParams, SimStatistics } from '@/types/simulation';
+import type { Cell, GNNMacrophagePrediction } from './cell';
+import { GATModel } from './gatInference';
+import { getDefaultGATModel } from './gnnWeights';
+import type { CarDesign, SimParams, SimStatistics, CellGraph } from '@/types/simulation';
 
 function clamp(v: number, min: number, max: number): number {
   return Math.max(min, Math.min(max, v));
@@ -79,6 +81,12 @@ export class ABMEngine {
   private spatialHash = new SpatialHash(50);
   private statsTimer: number = 0;
   private initialCD8Count: number = 0;
+  // === 可选 GNN 推理状态（默认关闭，不影响现有行为） ===
+  private gatModel: GATModel | null = null;
+  private lastGNNStep: number = 0;
+  private gnnInterval: number = 5; // 每 5 步调用一次 GNN
+  private cachedPredictions: Map<string, GNNMacrophagePrediction> = new Map();
+  private gnnEnabled: boolean = false;
 
   constructor(
     width: number,
@@ -187,6 +195,8 @@ export class ABMEngine {
       totalKills: [],
     };
     this.field = new CytokineField(this.bounds.width, this.bounds.height, 40, this.simParams, this.random);
+    this.lastGNNStep = 0;
+    this.cachedPredictions.clear();
     this.initializeCells();
     this.callbacks.onStatsUpdate(this.statistics);
   }
@@ -203,6 +213,17 @@ export class ABMEngine {
     this.speed = speed;
   }
 
+  /**
+   * 启用可选 GNN 推理模式。
+   * @param model 可选：显式传入的 GAT 模型；缺省使用确定性默认权重（seed 固定）。
+   */
+  initGNN(model?: GATModel): void {
+    this.gatModel = model ?? getDefaultGATModel();
+    this.gnnEnabled = true;
+    this.lastGNNStep = 0;
+    this.cachedPredictions.clear();
+  }
+
   public step(): void {
     if (this.isRunning) this.pause();
     const dt = 0.1 * this.speed; // fixed timestep for stepping
@@ -214,11 +235,15 @@ export class ABMEngine {
     }
     const getNeighbors = (x: number, y: number, r: number) => this.spatialHash.query(x, y, r);
 
+    // 可选 GNN 推理（每 gnnInterval 步执行一次），随后将 per-cell 预测传入 cell.update
+    this.runGNNInference();
+
     this.field.update(this.cells, dt);
     for (const cell of this.cells) {
       if (cell.alive) {
         const env = this.field.getAt(cell.position.x, cell.position.y);
-        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors);
+        const gnnPred = this.cachedPredictions.get(cell.id);
+        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors, gnnPred);
       }
     }
 
@@ -254,11 +279,15 @@ export class ABMEngine {
     }
     const getNeighbors = (x: number, y: number, r: number) => this.spatialHash.query(x, y, r);
 
+    // Optional GNN inference (every gnnInterval steps), then pass per-cell predictions
+    this.runGNNInference();
+
     // Update cells
     for (const cell of this.cells) {
       if (cell.alive) {
         const env = this.field.getAt(cell.position.x, cell.position.y);
-        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors);
+        const gnnPred = this.cachedPredictions.get(cell.id);
+        cell.update(dt, env, this.cells, this.carDesign, this.bounds, this.field, getNeighbors, gnnPred);
       }
     }
 
@@ -340,6 +369,118 @@ export class ABMEngine {
     }
   }
 
+  /**
+   * 遍历所有活细胞，构建 24 维节点特征矩阵与空间邻近边。
+   * 节点特征：one-hot 类型(4) + position(2) + 极化/能量(3) + 抗原(3) + 检查点(2) + 场环境(10)。
+   * 边：每个巨噬细胞 (CAR-M=100, WT=150) 用 SpatialHash 查询邻居，边特征 = 1/距离。
+   */
+  private buildCellGraph(): CellGraph {
+    const aliveCells = this.cells.filter(c => c.alive);
+    const numNodes = aliveCells.length;
+    const featureDim = 24;
+    const nodeFeatures = new Float32Array(numNodes * featureDim);
+
+    const nodeIndex = new Map<string, number>();
+    for (let i = 0; i < numNodes; i++) nodeIndex.set(aliveCells[i].id, i);
+
+    for (let i = 0; i < numNodes; i++) {
+      const cell = aliveCells[i];
+      const base = i * featureDim;
+      const isMacro = cell.type === 'CAR_MACROPHAGE' || cell.type === 'WILD_TYPE_MACROPHAGE';
+      const isTumor = cell.type === 'TUMOR_CELL';
+
+      // one-hot 类型 (4)
+      nodeFeatures[base + 0] = cell.type === 'CAR_MACROPHAGE' ? 1 : 0;
+      nodeFeatures[base + 1] = cell.type === 'WILD_TYPE_MACROPHAGE' ? 1 : 0;
+      nodeFeatures[base + 2] = cell.type === 'TUMOR_CELL' ? 1 : 0;
+      nodeFeatures[base + 3] = cell.type === 'CD8_T_CELL' ? 1 : 0;
+      // position (2) 归一化到 [0,1]
+      nodeFeatures[base + 4] = this.bounds.width > 0 ? cell.position.x / this.bounds.width : 0;
+      nodeFeatures[base + 5] = this.bounds.height > 0 ? cell.position.y / this.bounds.height : 0;
+      // 巨噬细胞极化/能量 (3)
+      nodeFeatures[base + 6] = isMacro ? (cell as CarMacrophage).m1Score : 0;
+      nodeFeatures[base + 7] = isMacro ? (cell as CarMacrophage).m2Score : 0;
+      nodeFeatures[base + 8] = isMacro ? (cell as CarMacrophage).energy : 0;
+      // 肿瘤抗原表达 (3)
+      nodeFeatures[base + 9] = isTumor ? (cell as TumorCell).her2Expression : 0;
+      nodeFeatures[base + 10] = isTumor ? (cell as TumorCell).cd19Expression : 0;
+      nodeFeatures[base + 11] = isTumor ? (cell as TumorCell).egfrExpression : 0;
+      // 免疫检查点表达 (2)
+      nodeFeatures[base + 12] = isTumor ? (cell as TumorCell).cd47Expression : 0;
+      nodeFeatures[base + 13] = isTumor ? (cell as TumorCell).cd24Expression : 0;
+      // 局部场环境 (10)
+      const env = this.field.getAt(cell.position.x, cell.position.y);
+      nodeFeatures[base + 14] = env.oxygen;
+      nodeFeatures[base + 15] = env.lactate;
+      nodeFeatures[base + 16] = env.tgfBeta;
+      nodeFeatures[base + 17] = env.ifnGamma;
+      nodeFeatures[base + 18] = env.il4;
+      nodeFeatures[base + 19] = env.il10;
+      nodeFeatures[base + 20] = env.vegf;
+      nodeFeatures[base + 21] = env.cxcl9;
+      nodeFeatures[base + 22] = env.spp1;
+      nodeFeatures[base + 23] = env.ecmDensity;
+    }
+
+    // 边构建：每个巨噬细胞用 SpatialHash 查询邻居
+    const rowArr: number[] = [];
+    const colArr: number[] = [];
+    const edgeFeatArr: number[] = [];
+    for (let i = 0; i < numNodes; i++) {
+      const cell = aliveCells[i];
+      if (cell.type !== 'CAR_MACROPHAGE' && cell.type !== 'WILD_TYPE_MACROPHAGE') continue;
+      const perceptionRadius = cell.type === 'CAR_MACROPHAGE' ? 100 : 150;
+      const neighbors = this.spatialHash.query(cell.position.x, cell.position.y, perceptionRadius);
+      for (const nb of neighbors) {
+        if (nb === cell || !nb.alive) continue;
+        const j = nodeIndex.get(nb.id);
+        if (j === undefined) continue;
+        const dx = cell.position.x - nb.position.x;
+        const dy = cell.position.y - nb.position.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d <= 0 || d > perceptionRadius) continue;
+        rowArr.push(i);
+        colArr.push(j);
+        edgeFeatArr.push(1 / d);
+      }
+    }
+
+    const numEdges = rowArr.length;
+    return {
+      nodeFeatures,
+      edgeIndex: { row: new Int32Array(rowArr), col: new Int32Array(colArr) },
+      edgeFeatures: new Float32Array(edgeFeatArr),
+      numNodes,
+      numEdges,
+      featureDim,
+    };
+  }
+
+  /**
+   * 每 gnnInterval 步运行一次 GNN 推理，缓存 per-node 巨噬细胞预测。
+   * 仅当 initGNN() 已启用时生效；否则与原有行为完全一致。
+   */
+  private runGNNInference(): void {
+    if (!this.gatModel || !this.gnnEnabled) return;
+    if (this.stepCount - this.lastGNNStep < this.gnnInterval) return;
+
+    const graph = this.buildCellGraph();
+    const predictions = this.gatModel.forward(graph);
+    const outputDim = 3;
+
+    // 将 per-node 预测缓存到 map（节点索引 → 细胞 ID）
+    const aliveCells = this.cells.filter(c => c.alive);
+    for (let i = 0; i < graph.numNodes; i++) {
+      const cellId = aliveCells[i].id;
+      this.cachedPredictions.set(cellId, {
+        m1: predictions.predictions[i * outputDim + 0],
+        m2: predictions.predictions[i * outputDim + 1],
+        phago: predictions.predictions[i * outputDim + 2],
+      });
+    }
+    this.lastGNNStep = this.stepCount;
+  }
+
   private collectStats(): void {
     const carMs = this.cells.filter(c => c.type === 'CAR_MACROPHAGE' && c.alive) as CarMacrophage[];
     const wts = this.cells.filter(c => c.type === 'WILD_TYPE_MACROPHAGE' && c.alive) as WildTypeMacrophage[];
@@ -408,6 +549,11 @@ export class ABMEngine {
         this.statistics.totalKills?.[i] ?? '',
       ].join(','));
     }
+
+    if (this.gnnEnabled) {
+      rows.push('');
+      rows.push(`# GNN enabled: interval=${this.gnnInterval}, lastStep=${this.lastGNNStep}, cachedNodes=${this.cachedPredictions.size}`);
+    }
     return rows.join('\n');
   }
 
@@ -424,6 +570,14 @@ export class ABMEngine {
         wildType: this.cells.filter(c => c.type === 'WILD_TYPE_MACROPHAGE' && c.alive).length,
       },
       statistics: this.statistics,
+      gnn: this.gnnEnabled
+        ? {
+            enabled: true,
+            interval: this.gnnInterval,
+            lastStep: this.lastGNNStep,
+            cachedPredictions: this.cachedPredictions.size,
+          }
+        : { enabled: false },
     };
   }
 

@@ -1,7 +1,12 @@
-import { FlaskConical, Dna, Syringe, Snowflake, Target, Microscope } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { FlaskConical, Dna, Syringe, Snowflake, Target, Microscope, Database } from 'lucide-react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { loadTcgaScenarios } from '@/lib/tcgaDataLoader';
+import type { TcgaPatientScenario } from '@/types/simulation';
 import type { CarDesign, SimParams, SignalingDomain, TargetAntigen } from '@/types/simulation';
+
+type ScenarioSource = 'clinical' | 'tcga';
 
 interface PresetScenario {
   id: string;
@@ -10,6 +15,7 @@ interface PresetScenario {
   note?: string;
   icon: React.ReactNode;
   accent: string;
+  source: ScenarioSource;
   simParams: SimParams;
   carDesign: CarDesign;
 }
@@ -22,6 +28,7 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     note: 'Uses CT-0508 as clinical context. This is a mechanism-informed simulation preset, not a calibrated reproduction of patient outcomes.',
     icon: <Microscope className="w-4 h-4" />,
     accent: '#00ccff',
+    source: 'clinical',
     simParams: {
       carMCount: 12,
       tumorCount: 30,
@@ -46,6 +53,7 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     note: 'Explores how reduced antigen density and missing checkpoint blockade can lower simulated uptake.',
     icon: <Target className="w-4 h-4" />,
     accent: '#ff6644',
+    source: 'clinical',
     simParams: {
       carMCount: 12,
       tumorCount: 30,
@@ -70,6 +78,7 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     note: 'Models a T-cell–favorable context (e.g. the direction CAR-M + anti-PD-1 combination aims for). Note: the simulator does not model PD-1/PD-L1 explicitly — this preset changes seeding and suppression levels only.',
     icon: <Syringe className="w-4 h-4" />,
     accent: '#00ff88',
+    source: 'clinical',
     simParams: {
       carMCount: 12,
       tumorCount: 25,
@@ -94,6 +103,7 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     note: 'CD147 signal domain upregulates MMPs. CAR-M cells create channels through ECM, enabling T cell infiltration into tumor core.',
     icon: <Dna className="w-4 h-4" />,
     accent: '#ffcc00',
+    source: 'clinical',
     simParams: {
       carMCount: 12,
       tumorCount: 25,
@@ -118,6 +128,7 @@ const PRESET_SCENARIOS: PresetScenario[] = [
     note: 'High TGF-β (0.8) + low oxygen + dense ECM. Tests whether CAR-M can convert a "cold" tumor to "hot" by remodeling the TME.',
     icon: <Snowflake className="w-4 h-4" />,
     accent: '#8b5cf6',
+    source: 'clinical',
     simParams: {
       carMCount: 8,
       tumorCount: 40,
@@ -137,11 +148,164 @@ const PRESET_SCENARIOS: PresetScenario[] = [
   },
 ];
 
+/** 默认代填值（TCGA JSON 中未提供的 SimParams / CarDesign 字段）。 */
+const DEFAULT_SIM_PARAMS: SimParams = {
+  carMCount: 12,
+  wildTypeCount: 10,
+  tumorCount: 30,
+  cd8Count: 8,
+  oxygenLevel: 0.5,
+  lactateLevel: 0.3,
+  tgfBetaLevel: 0.4,
+  randomSeed: 20250706,
+};
+
+const DEFAULT_CAR_DESIGN: CarDesign = {
+  signalingDomain: 'CD3ζ' as SignalingDomain,
+  targetAntigen: 'HER2' as TargetAntigen,
+  affinity: 5,
+  checkpointBlockade: { CD47_SIRPa: false, CD24_Siglec10: false },
+};
+
+/** 回退硬编码的 TCGA 驱动预设（JSON 加载失败时使用）。 */
+const FALLBACK_TCGA_SCENARIOS: TcgaPatientScenario[] = [
+  {
+    name: 'TCGA: 高免疫浸润',
+    description: '基于 TCGA-BRCA 高免疫亚型患者队列（n=45），肿瘤微环境中免疫细胞高度浸润',
+    sim_params: {
+      carMCount: 15,
+      wildTypeCount: 10,
+      tumorCount: 20,
+      cd8Count: 18,
+      oxygenLevel: 0.6,
+      lactateLevel: 0.25,
+      tgfBetaLevel: 0.3,
+      randomSeed: 42901,
+    },
+    car_design: {
+      signalingDomain: 'CD3ζ',
+      targetAntigen: 'HER2',
+      affinity: 7,
+      checkpointBlockade: { CD47_SIRPa: true, CD24_Siglec10: false },
+    },
+    tcga_source: { subtype: 'high_immune', sample_count: 45 },
+  },
+  {
+    name: 'TCGA: 低免疫浸润',
+    description: '基于 TCGA-BRCA 低免疫亚型（n=30），免疫沙漠型微环境，CAR-M 需克服免疫抑制',
+    sim_params: {
+      carMCount: 20,
+      wildTypeCount: 5,
+      tumorCount: 35,
+      cd8Count: 5,
+      oxygenLevel: 0.35,
+      lactateLevel: 0.55,
+      tgfBetaLevel: 0.6,
+      randomSeed: 42902,
+    },
+    car_design: {
+      signalingDomain: 'CD3ζ',
+      targetAntigen: 'EGFR',
+      affinity: 8,
+      checkpointBlockade: { CD47_SIRPa: true, CD24_Siglec10: true },
+    },
+    tcga_source: { subtype: 'low_immune', sample_count: 30 },
+  },
+  {
+    name: 'TCGA: 高代谢压力',
+    description: '基于 TCGA-PAAD 胰腺癌队列，高乳酸/低氧/高 TGF-β 的免疫抑制微环境',
+    sim_params: {
+      carMCount: 18,
+      wildTypeCount: 8,
+      tumorCount: 40,
+      cd8Count: 3,
+      oxygenLevel: 0.2,
+      lactateLevel: 0.7,
+      tgfBetaLevel: 0.75,
+      randomSeed: 42903,
+    },
+    car_design: {
+      signalingDomain: 'FcRγ',
+      targetAntigen: 'HER2',
+      affinity: 6,
+      checkpointBlockade: { CD47_SIRPa: true, CD24_Siglec10: true },
+    },
+    tcga_source: { subtype: 'high_metabolic', sample_count: 40 },
+  },
+  {
+    name: 'TCGA: 平衡微环境',
+    description: '基于 TCGA-BRCA 正常亚型（n=25），中等免疫浸润，模拟标准治疗条件',
+    sim_params: {
+      carMCount: 12,
+      wildTypeCount: 8,
+      tumorCount: 25,
+      cd8Count: 10,
+      oxygenLevel: 0.5,
+      lactateLevel: 0.3,
+      tgfBetaLevel: 0.4,
+      randomSeed: 42904,
+    },
+    car_design: {
+      signalingDomain: 'CD3ζ',
+      targetAntigen: 'CD19',
+      affinity: 5,
+      checkpointBlockade: { CD47_SIRPa: false, CD24_Siglec10: false },
+    },
+    tcga_source: { subtype: 'normal', sample_count: 25 },
+  },
+];
+
+/** 将 TcgaPatientScenario (snake_case / Partial) 转换为 PresetScenario。 */
+function toPresetScenario(s: TcgaPatientScenario, idx: number): PresetScenario {
+  const simParams: SimParams = { ...DEFAULT_SIM_PARAMS, ...s.sim_params };
+  const carDesign: CarDesign = {
+    ...DEFAULT_CAR_DESIGN,
+    ...s.car_design,
+    checkpointBlockade: {
+      ...DEFAULT_CAR_DESIGN.checkpointBlockade,
+      ...s.car_design?.checkpointBlockade,
+    },
+  };
+  const subtype = s.tcga_source?.subtype ?? '未知';
+  const sampleCount = s.tcga_source?.sample_count ?? '—';
+  return {
+    id: `tcga-${idx}`,
+    name: s.name,
+    description: s.description,
+    note: `数据来源：TCGA ${subtype} 亚型患者队列（n=${sampleCount}）。基于真实多组学队列的机制化参考预设，非患者结局校准。`,
+    icon: <Database className="w-4 h-4" />,
+    accent: '#22d3ee',
+    source: 'tcga',
+    simParams,
+    carDesign,
+  };
+}
+
 interface PresetScenariosProps {
   onSelect: (simParams: SimParams, carDesign: CarDesign) => void;
 }
 
 export default function PresetScenarios({ onSelect }: PresetScenariosProps) {
+  const [tcgaScenarios, setTcgaScenarios] = useState<PresetScenario[]>([]);
+
+  useEffect(() => {
+    let cancelled = false;
+    loadTcgaScenarios()
+      .then((list) => {
+        if (cancelled) return;
+        const source = list.length > 0 ? list : FALLBACK_TCGA_SCENARIOS;
+        setTcgaScenarios(source.map(toPresetScenario));
+      })
+      .catch(() => {
+        if (!cancelled) setTcgaScenarios(FALLBACK_TCGA_SCENARIOS.map(toPresetScenario));
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const allScenarios = [...PRESET_SCENARIOS, ...tcgaScenarios];
+
   return (
     <div className="glass-panel p-4 space-y-4 w-full">
       <div className="flex items-center gap-2">
@@ -150,7 +314,7 @@ export default function PresetScenarios({ onSelect }: PresetScenariosProps) {
       </div>
 
       <div className="grid grid-cols-1 gap-2">
-        {PRESET_SCENARIOS.map((scenario) => (
+        {allScenarios.map((scenario) => (
           <button
             key={scenario.id}
             onClick={() => onSelect(scenario.simParams, scenario.carDesign)}
@@ -161,18 +325,29 @@ export default function PresetScenarios({ onSelect }: PresetScenariosProps) {
               style={{ borderLeftWidth: '4px', borderLeftColor: scenario.accent }}
             >
               <CardHeader className="p-3 pb-0">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                <div className="flex items-center justify-between gap-2">
+                  <div className="flex items-center gap-2 min-w-0">
                     <span style={{ color: scenario.accent }}>{scenario.icon}</span>
                     <CardTitle className="text-xs font-semibold text-slate-200">{scenario.name}</CardTitle>
                   </div>
-                  <Badge
-                    variant="outline"
-                    className="text-[10px]"
-                    style={{ borderColor: scenario.accent + '40', color: scenario.accent }}
-                  >
-                    {scenario.carDesign.signalingDomain}
-                  </Badge>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {scenario.source === 'tcga' && (
+                      <Badge
+                        variant="outline"
+                        className="text-[10px]"
+                        style={{ borderColor: '#22d3ee40', color: '#22d3ee' }}
+                      >
+                        TCGA
+                      </Badge>
+                    )}
+                    <Badge
+                      variant="outline"
+                      className="text-[10px]"
+                      style={{ borderColor: scenario.accent + '40', color: scenario.accent }}
+                    >
+                      {scenario.carDesign.signalingDomain}
+                    </Badge>
+                  </div>
                 </div>
                 <CardDescription className="text-[10px] text-slate-400 leading-relaxed">
                   {scenario.description}
