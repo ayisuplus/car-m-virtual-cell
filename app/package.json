@@ -10,6 +10,11 @@
     "test": "npm run test:surrogate && npm run test:unit",
     "test:surrogate": "node ../scripts/test-surrogate.mjs",
     "test:unit": "vitest run",
+    "test:e2e": "playwright test",
+    "test:e2e:ci": "CI=true playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report playwright-report",
+    "test:e2e:debug": "playwright test --debug",
     "build:trajectories": "esbuild ../scripts/run-trajectories-entry.ts --bundle --platform=node --format=cjs --alias:@=./src --outfile=../scripts/run-trajectories-bundle.cjs",
     "preview": "vite preview"
   },
@@ -36,7 +41,8 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.39.1",
-    "@types/node": "^24.10.1",
+    "@playwright/test": "^1.62.1",
+    "@types/node": "^24.13.3",
     "@types/react": "^19.2.5",
     "@types/react-dom": "^19.2.3",
     "@vitejs/plugin-react": "^5.1.1",
