@@ -87,7 +87,7 @@ jobs:
   e2e-tests:
     name: E2E Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 45
     
     defaults:
       run:
@@ -110,9 +110,9 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
-      # ---- 4. 安装 Playwright 浏览器 ----
+      # ---- 4. 安装 Playwright 浏览器（chromium + webkit，与 playwright.config.ts 的 projects 一致） ----
       - name: Install Playwright browsers
-        run: npx playwright install --with-deps chromium
+        run: npx playwright install --with-deps chromium webkit
 
       # ---- 5. 构建生产版本 ----
       - name: Build
