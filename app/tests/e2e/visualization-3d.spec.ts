@@ -48,15 +48,12 @@ test.describe('3D 可视化场景', () => {
     // 点击 Tumor Cell 按钮
     await page.click('button:has-text("Tumor Cell")');
     
-    // 等待模型加载
-    await page.waitForTimeout(2000);
-    
-    // 验证加载状态消失或显示错误
-    const loadingVisible = await page.locator('text=Loading 3D model...').isVisible().catch(() => false);
-    const errorVisible = await page.locator('text=3D model not loaded').isVisible().catch(() => false);
-    
-    // 模型应该加载完成或显示回退
-    expect(!loadingVisible || errorVisible).toBeTruthy();
+    // 等待模型加载完成：加载指示消失或显示回退提示（GLB 在 webkit/CI 上可能较慢，用 poll 等待）
+    await expect.poll(async () => {
+      const loadingVisible = await page.locator('text=Loading 3D model...').isVisible().catch(() => false);
+      const errorVisible = await page.locator('text=3D model not loaded').isVisible().catch(() => false);
+      return !loadingVisible || errorVisible;
+    }, { timeout: 30000 }).toBeTruthy();
   });
 
   test('3D 场景应该渲染 canvas 元素', async ({ page }) => {
@@ -105,9 +102,10 @@ test.describe('3D 可视化场景', () => {
     
     await page.waitForTimeout(2000);
     
-    // 验证交互提示
-    await expect(page.locator('text=Drag to rotate')).toBeVisible();
-    await expect(page.locator('text=Scroll to zoom')).toBeVisible();
+    // 验证交互提示（限定在 3D 展示区 section 内，避免匹配到资产区的同名文案）
+    const showcase = page.locator('section').filter({ hasText: 'Interactive 3D Cell Viewer' }).first();
+    await expect(showcase.getByText('Drag to rotate')).toBeVisible();
+    await expect(showcase.getByText('Scroll to zoom')).toBeVisible();
   });
 });
 

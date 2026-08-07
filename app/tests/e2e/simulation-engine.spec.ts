@@ -118,16 +118,17 @@ test.describe('仿真引擎核心流程', () => {
     // 等待图表渲染
     await page.waitForTimeout(2000);
     
-    // 验证指标卡片显示数据
-    await expect(page.locator('text=Tumor Reduction')).toBeVisible();
-    await expect(page.getByText('Phagocytosis', { exact: true })).toBeVisible();
-    await expect(page.locator('text=M1 Ratio')).toBeVisible();
-    await expect(page.locator('text=CD8+ Activation')).toBeVisible();
+    // 验证指标卡片显示数据（限定在当前标签面板内）
+    const panel = page.getByRole('tabpanel');
+    await expect(panel.getByText('Tumor Reduction')).toBeVisible();
+    await expect(panel.getByText('Phagocytosis', { exact: true })).toBeVisible();
+    await expect(panel.getByText('M1 Ratio')).toBeVisible();
+    await expect(panel.getByText('CD8+ Activation')).toBeVisible();
     
     // 验证图表容器存在
-    await expect(page.locator('text=Tumor & CAR-M Dynamics')).toBeVisible();
-    await expect(page.locator('text=Phagocytosis Rate')).toBeVisible();
-    await expect(page.locator('text=Macrophage Polarization')).toBeVisible();
+    await expect(panel.getByText('Tumor & CAR-M Dynamics')).toBeVisible();
+    await expect(panel.getByText('Phagocytosis Rate')).toBeVisible();
+    await expect(panel.getByText('Macrophage Polarization')).toBeVisible();
   });
 
   test('应该能够切换 2D/3D 视图', async ({ page }) => {

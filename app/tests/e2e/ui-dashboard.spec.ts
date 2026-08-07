@@ -58,15 +58,16 @@ test.describe('UI 仪表板功能', () => {
     // 等待数据加载
     await page.waitForTimeout(2000);
     
-    // 验证指标卡片
-    await expect(page.locator('text=Tumor Reduction')).toBeVisible();
-    await expect(page.getByText('Phagocytosis', { exact: true })).toBeVisible();
-    await expect(page.locator('text=M1 Ratio')).toBeVisible();
-    await expect(page.locator('text=CD8+ Activation')).toBeVisible();
+    // 验证指标卡片（限定在当前标签面板内，避免匹配到其他惰性加载区块的同名文案）
+    const panel = page.getByRole('tabpanel');
+    await expect(panel.getByText('Tumor Reduction')).toBeVisible();
+    await expect(panel.getByText('Phagocytosis', { exact: true })).toBeVisible();
+    await expect(panel.getByText('M1 Ratio')).toBeVisible();
+    await expect(panel.getByText('CD8+ Activation')).toBeVisible();
     
     // 验证指标值显示（只验证标签存在）
     // 注意：指标值可能为 0%，所以只验证标签存在即可
-    const hasTumorReduction = await page.locator('text=Tumor Reduction').isVisible();
+    const hasTumorReduction = await panel.getByText('Tumor Reduction').isVisible();
     expect(hasTumorReduction).toBeTruthy();
   });
 
@@ -80,14 +81,15 @@ test.describe('UI 仪表板功能', () => {
     // 等待图表渲染
     await page.waitForTimeout(2000);
     
-    // 验证图表标题
-    await expect(page.locator('text=Tumor & CAR-M Dynamics')).toBeVisible();
-    await expect(page.locator('text=Phagocytosis Rate')).toBeVisible();
-    await expect(page.locator('text=Macrophage Polarization')).toBeVisible();
-    await expect(page.locator('text=CD8+ T Cell Activation')).toBeVisible();
+    // 验证图表标题（限定在当前标签面板内）
+    const panel = page.getByRole('tabpanel');
+    await expect(panel.getByText('Tumor & CAR-M Dynamics')).toBeVisible();
+    await expect(panel.getByText('Phagocytosis Rate')).toBeVisible();
+    await expect(panel.getByText('Macrophage Polarization')).toBeVisible();
+    await expect(panel.getByText('CD8+ T Cell Activation')).toBeVisible();
     
     // 验证 canvas 元素存在（Chart.js 渲染）
-    const charts = page.locator('canvas');
+    const charts = panel.locator('canvas');
     await expect(charts.first()).toBeVisible();
   });
 
@@ -149,17 +151,17 @@ test.describe('UI 仪表板功能', () => {
     // 切换到 AI model
     await switchToTab(page, 'AI model');
     
-    // 等待组件加载
-    await page.waitForTimeout(1000);
+    // NeuralSurrogateDemo 是惰性加载组件，webkit 上加载较慢，交给 expect 自动等待（加长超时）
+    const panel = page.getByRole('tabpanel');
     
     // 验证 GAT 演示内容
-    await expect(page.locator('text=GAT Neural Surrogate Demo')).toBeVisible();
-    await expect(page.locator('text=Reference ODE Generator')).toBeVisible();
-    await expect(page.getByRole('heading', { name: 'GAT Surrogate (per-cell)' })).toBeVisible();
+    await expect(panel.getByText('GAT Neural Surrogate Demo')).toBeVisible({ timeout: 30000 });
+    await expect(panel.getByText('Reference ODE Generator')).toBeVisible();
+    await expect(panel.getByRole('heading', { name: 'GAT Surrogate (per-cell)' })).toBeVisible();
     
     // 验证基准测试按钮
-    await expect(page.locator('button:has-text("Run GAT Benchmark")')).toBeVisible();
-    await expect(page.locator('button:has-text("Run Micro-Benchmark")')).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Run GAT Benchmark' })).toBeVisible();
+    await expect(panel.getByRole('button', { name: 'Run Micro-Benchmark' })).toBeVisible();
   });
 
   test('细胞图例应该始终显示', async ({ page }) => {

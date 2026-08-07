@@ -59,9 +59,6 @@ export default defineConfig({
     
     /* 忽略 HTTPS 错误 */
     ignoreHTTPSErrors: true,
-    
-    /* 权限 */
-    permissions: ['clipboard-read', 'clipboard-write'],
   },
 
   /* 配置测试项目 */
