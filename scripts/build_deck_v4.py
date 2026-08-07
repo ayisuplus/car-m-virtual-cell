@@ -375,7 +375,7 @@ add_multi_text(s, Inches(7.3), Inches(1.5), Inches(5.2), Inches(3), [
 shot_ai = os.path.join(SHOTS, '09-ai-panel.png')
 add_image_fit(s, shot_ai, Inches(0.5), Inches(5), Inches(12.3), Inches(2.3))
 set_notes(s, f"""The most worthwhile engineering point. The polarization equation - every cell every frame must compute M1 vs M2. If we honestly solve ODE, 100+ cells real-time will lag every frame. So we use a neural surrogate.
-Measured (median of 11 timed replicates): surrogate ~{_SURR_US:.2f}us/cell, equivalent ODE ~{_ODE_US:.2f}us, about {_SPEEDUP:.1f}x speedup. N~55 cells per frame polarization {_FRAME_MS:.2f}ms, 60fps margin sufficient.
+Measured (median of 11 timed replicates): surrogate ~{_SURR_US:.2f}us/cell, representative RK4 ODE ~{_ODE_US:.2f}us, about {_SPEEDUP:.1f}x speedup. N~55 cells per frame polarization {_FRAME_MS:.2f}ms, 60fps margin sufficient.
 Open the AI panel parameter sweep on website. Fast is not for showing off - fast makes 'every frame giving 100+ cells a decision' possible.""")
 
 # ============================================================
@@ -387,8 +387,11 @@ add_text_box(s, Inches(0.8), Inches(0.3), Inches(11), Inches(0.7),
              "Clinical Context: CT-0508", 32, ORANGE, True)
 add_text_box(s, Inches(0.8), Inches(0.9), Inches(11), Inches(0.5),
              "First-in-human HER2 CAR-M trial | Design anchor, NOT validation of our model", 14, LIGHT_GRAY, False)
-# Four number cards
-nums = [("14", "Patients"), ("0%", "CRS >= G3"), ("44%", "Stable Disease"), ("-20%", "Best Response")]
+# Four number cards (all traceable to Reiss et al., Nat Med 2025,
+# doi:10.1038/s41591-025-03495-z: 14 patients; no >=G3 CRS; 44% (4/9) HER2 3+
+# stable disease as best response; tumor volume reductions in 41% of
+# measurable lesions — with NO RECIST objective responses)
+nums = [("14", "Patients"), ("0%", "CRS >= G3"), ("44%", "Stable Disease"), ("41%", "Lesions Shrunk")]
 for i, (num, label) in enumerate(nums):
     x = Inches(1 + i * 3)
     add_card(s, x, Inches(2), Inches(2.5), Inches(2.5))
@@ -405,7 +408,7 @@ add_multi_text(s, Inches(1.3), Inches(5.2), Inches(10.7), Inches(1.5), [
     ("We do NOT claim our model predicted clinical outcomes.", 14, LIGHT_GRAY, False, PP_ALIGN.LEFT),
 ])
 shot_clin = os.path.join(SHOTS, '11-clinical.png')
-set_notes(s, """Before wrapping up, I want to carefully report a set of numbers. CT-0508 early report: 14 patients, Grade>=3 CRS is 0%, 44% stable disease, best response median decline 20%.
+set_notes(s, """Before wrapping up, I want to carefully report a set of numbers, all from the CT-0508 Phase 1 report (Reiss et al., Nature Medicine 2025, doi:10.1038/s41591-025-03495-z): 14 patients treated; no Grade>=3 CRS or ICANS; 44% (4 of 9) of HER2 3+ patients achieved stable disease as best overall response; tumor volume reductions were noted in 41% of measurable lesions — but importantly, there were NO objective responses per RECIST v1.1, so we do not quote any "tumor shrinkage percentage" as a response number.
 Emphasize - this is background and scenario design reference, NOT our simulation's validation result. We did not say the model predicted clinical.""")
 
 # ============================================================
