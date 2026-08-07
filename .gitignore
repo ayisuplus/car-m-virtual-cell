@@ -7,3 +7,10 @@ dist/
 __pycache__/
 *.pyc
 ~$*
+
+# AI assistant / tooling internal state
+.qoder/
+lark-feishu/
+
+# Raw TCGA data cache (regenerate via python/download_tcga.py)
+python/data_cache/
