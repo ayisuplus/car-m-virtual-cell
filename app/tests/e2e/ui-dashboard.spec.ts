@@ -202,19 +202,16 @@ test.describe('仪表板交互测试', () => {
     // 切换到 AI model
     await switchToTab(page, 'AI model');
     
-    // 等待组件加载
-    await page.waitForTimeout(1000);
+    // NeuralSurrogateDemo 惰性加载，CI 上可能较慢，等待按钮出现后再点击
+    const panel = page.getByRole('tabpanel');
+    const sweepButton = panel.getByRole('button', { name: /Agreement Sweep/ });
+    await expect(sweepButton).toBeVisible({ timeout: 30000 });
+    await sweepButton.click();
     
-    // 点击 Agreement Sweep
-    await page.click('button:has-text("Agreement Sweep")');
+    // 验证进度显示或完成结果（sweep 可能很快完成，两者任一即可）
+    await expect(panel.locator('text=/Sweep \\d+ \\/ 50|mean agreement/')).toBeVisible({ timeout: 30000 });
     
-    // 验证进度显示
-    await expect(page.locator('text=/Sweep \\d+ \\/ 50/')).toBeVisible();
-    
-    // 等待完成
-    await page.waitForTimeout(10000);
-    
-    // 验证结果显示
-    await expect(page.locator('text=/mean agreement/')).toBeVisible();
+    // 等待完成，验证结果显示
+    await expect(panel.locator('text=/mean agreement/')).toBeVisible({ timeout: 60000 });
   });
 });

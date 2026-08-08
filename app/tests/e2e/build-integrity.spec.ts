@@ -19,9 +19,9 @@ test.describe('构建产物完整性', () => {
     // 验证页面标题
     await expect(page).toHaveTitle(/CAR-M/);
     
-    // 验证关键元素存在
-    await expect(page.locator('text=CAR-M Simulator').first()).toBeVisible();
-    await expect(page.locator('text=AI virtual cell platform').first()).toBeVisible();
+    // 验证关键元素存在（PR #2 后品牌文案为 CAR-M / Virtual Cell Lab，用稳定的 aria-label 验证）
+    await expect(page.getByRole('link', { name: 'CAR-M Simulator home' })).toBeVisible();
+    await expect(page.getByText('Virtual Cell Lab')).toBeVisible();
   });
 
   test('所有主要区块应该渲染', async ({ page }) => {
@@ -49,11 +49,11 @@ test.describe('构建产物完整性', () => {
       window.scrollTo(0, document.body.scrollHeight);
     });
     
-    // 等待懒加载组件
+    // 等待懒加载组件（CI 上惰性 chunk 加载可能超过 3s，加长断言超时）
     await page.waitForTimeout(3000);
     
     // 验证页脚存在（使用更灵活的选择器）
-    await expect(page.locator('footer')).toBeVisible();
+    await expect(page.locator('footer')).toBeVisible({ timeout: 30000 });
   });
 
   test('SPA 路由应该正确处理', async ({ page }) => {
