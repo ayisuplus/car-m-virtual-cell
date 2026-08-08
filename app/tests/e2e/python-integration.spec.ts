@@ -101,8 +101,9 @@ test.describe('Python 数据管道集成', () => {
     for (const file of files) {
       const response = await page.request.get(file.path);
       expect(response.ok()).toBeTruthy();
-      const contentLength = parseInt(response.headers()['content-length'] || '0');
-      expect(contentLength).toBeGreaterThan(file.minSize);
+      // 用响应体实际长度验证大小（vite preview 可能不返回 content-length 头）
+      const body = await response.body();
+      expect(body.byteLength).toBeGreaterThan(file.minSize);
     }
   });
 });

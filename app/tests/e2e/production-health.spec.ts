@@ -136,7 +136,9 @@ test.describe('部署流水线验证', () => {
     
     expect(ciContent).toContain('e2e-tests:');
     expect(ciContent).toContain('Playwright');
-    expect(ciContent).toContain('npm run test:e2e:ci');
+    // matrix 拆分后 CI 直接调用 playwright test --project=<browser>；
+    // 本地/其他入口仍可用 package.json 的 test:e2e:ci 脚本
+    expect(ciContent).toContain('playwright test --project=');
   });
 
   test('应该验证部署工作流包含健康检查', async () => {
