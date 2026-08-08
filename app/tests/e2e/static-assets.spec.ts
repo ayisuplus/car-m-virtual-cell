@@ -86,15 +86,12 @@ test.describe('TCGA 数据资源加载', () => {
     // 切换到 TCGA 标签页
     await switchToTab(page, 'TCGA');
     
-    // 等待数据加载
-    await page.waitForTimeout(3000);
-    
-    // 验证 TCGA 面板显示数据或错误
-    const hasData = await page.locator('text=TCGA 患者队列').isVisible().catch(() => false);
-    const hasError = await page.locator('text=加载 TCGA 数据失败').isVisible().catch(() => false);
-    
-    // 应该显示数据或错误信息
-    expect(hasData || hasError).toBeTruthy();
+    // 验证 TCGA 面板显示数据或错误（CI 上加载多个 JSON 可能超过 3s，用 poll 等待）
+    await expect.poll(async () => {
+      const hasData = await page.locator('text=TCGA 患者队列').isVisible().catch(() => false);
+      const hasError = await page.locator('text=加载 TCGA 数据失败').isVisible().catch(() => false);
+      return hasData || hasError;
+    }, { timeout: 30000 }).toBeTruthy();
   });
 
   test('TCGA 预测数据应该包含必要字段', async ({ page }) => {
